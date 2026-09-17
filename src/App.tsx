@@ -15,13 +15,17 @@ function App() {
       const width = window.innerWidth;
       const height = window.innerHeight;
 
-      // Mobile
+      // MOBILE
+      // Keep the design at its normal size and allow
+      // the webpage to scroll vertically.
       if (width < 768) {
         setScale(1);
         return;
       }
 
-      // Desktop keeps the original 1500x900 composition
+      // DESKTOP
+      // Keep the original 1500x900 composition
+      // scaled to fit the viewport.
       const scaleX = width / DESIGN_WIDTH;
       const scaleY = height / DESIGN_HEIGHT;
 
@@ -38,16 +42,33 @@ function App() {
   }, []);
 
   return (
-    <main className="fixed inset-0 h-svh w-full overflow-hidden bg-[#092b5d]">
+    <main
+      className="
+        relative
+        min-h-svh
+        w-full
+        overflow-x-hidden
+        overflow-y-auto
+        bg-[#092b5d]
+
+        md:fixed
+        md:inset-0
+        md:h-svh
+        md:min-h-0
+        md:overflow-hidden
+      "
+    >
       {/* BACKGROUND */}
       <div
         className="
-          absolute inset-0
+          absolute
+          inset-0
           bg-[radial-gradient(circle_at_80%_25%,rgba(67,143,232,0.42),transparent_32%),radial-gradient(circle_at_10%_0%,rgba(62,121,202,0.35),transparent_30%),linear-gradient(135deg,#123d79_0%,#0b2f65_45%,#082753_100%)]
         "
       />
 
-      {/* Desktop decorative shapes */}
+      {/* DESKTOP DECORATIVE SHAPES */}
+
       <div
         className="
           absolute
@@ -108,6 +129,7 @@ function App() {
       />
 
       {/* MOBILE BACKGROUND SHAPES */}
+
       <div
         className="
           absolute
@@ -134,14 +156,16 @@ function App() {
         "
       />
 
-      {/* DESKTOP DESIGN CANVAS / MOBILE FULL SCREEN */}
+      {/* DESIGN CANVAS */}
+
       <div
         className="
           absolute
           left-0
           top-0
-          h-full
+          h-[900px]
           w-full
+
           md:h-[900px]
           md:w-[1500px]
         "
@@ -151,11 +175,13 @@ function App() {
         }}
       >
         {/* LOGO */}
+
         <div
           className="
             absolute
             left-[22px]
             top-[22px]
+
             md:left-[70px]
             md:top-[45px]
           "
@@ -164,12 +190,14 @@ function App() {
         </div>
 
         {/* HERO */}
+
         <div
           className="
             absolute
             left-[22px]
             right-[22px]
             top-[92px]
+
             md:left-[70px]
             md:right-auto
             md:top-[165px]
@@ -179,6 +207,7 @@ function App() {
         </div>
 
         {/* PHONES */}
+
         <PhoneSection />
       </div>
     </main>
