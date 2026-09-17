@@ -80,23 +80,39 @@ const ChatPhone = () => {
       className="
         relative
         z-20
+
         -ml-[70px]
-        mt-[90px]
+
+        mt-[25px]
+        md:mt-[90px]
+
         h-[560px]
         w-[285px]
+
         rotate-[7deg]
+
         rounded-[43px]
         border-[6px]
         border-[#111827]
+
         bg-[#f8fbff]
+
         shadow-[15px_25px_50px_rgba(0,0,0,0.3)]
-        sm:h-[635px]
-        sm:w-[320px]
       "
     >
 
-      <div className="absolute inset-[2px] rounded-[38px] border border-[#75aee5]" />
+      {/* Inner Border */}
+      <div
+        className="
+          absolute
+          inset-[2px]
+          rounded-[38px]
+          border
+          border-[#75aee5]
+        "
+      />
 
+      {/* Screen */}
       <div
         className="
           absolute
@@ -107,9 +123,19 @@ const ChatPhone = () => {
         "
       >
 
-        {/* Status */}
-        <div className="flex items-center justify-between px-5 pt-[16px] text-[8px] font-bold text-[#15243b]">
-
+        {/* Status Bar */}
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+            px-5
+            pt-[16px]
+            text-[8px]
+            font-bold
+            text-[#15243b]
+          "
+        >
           <span>9:41</span>
 
           <div className="flex gap-1">
@@ -117,7 +143,6 @@ const ChatPhone = () => {
             <span>◉</span>
             <span>▰</span>
           </div>
-
         </div>
 
         {/* Dynamic Island */}
@@ -194,6 +219,7 @@ const ChatPhone = () => {
         {/* Messages */}
         <div className="space-y-4 px-4 pt-5">
 
+          {/* Riya */}
           <Message
             name="Riya"
             time="10:24 AM"
@@ -213,11 +239,25 @@ const ChatPhone = () => {
             "
           >
 
-            <div className="h-full rounded-[8px] bg-white shadow-sm">
+            <div
+              className="
+                h-full
+                rounded-[8px]
+                bg-white
+                shadow-sm
+              "
+            >
 
               <div className="flex h-full">
 
-                <div className="w-1/2 border-r border-[#edf1f5] p-2">
+                <div
+                  className="
+                    w-1/2
+                    border-r
+                    border-[#edf1f5]
+                    p-2
+                  "
+                >
 
                   <div className="h-2 w-12 rounded bg-[#dfeaf6]" />
 
@@ -229,7 +269,13 @@ const ChatPhone = () => {
 
                 </div>
 
-                <div className="w-1/2 bg-[#f1f7ff] p-2">
+                <div
+                  className="
+                    w-1/2
+                    bg-[#f1f7ff]
+                    p-2
+                  "
+                >
 
                   <div className="h-3 w-12 rounded bg-[#2d83e8]" />
 
@@ -266,7 +312,14 @@ const ChatPhone = () => {
                 Looks great! I'll handle the backend. Let's sync up at 7 PM today.
               </div>
 
-              <p className="mt-1 text-right text-[6px] text-[#8ba0b8]">
+              <p
+                className="
+                  mt-1
+                  text-right
+                  text-[6px]
+                  text-[#8ba0b8]
+                "
+              >
                 10:27 AM ✓✓
               </p>
 

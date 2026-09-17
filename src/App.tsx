@@ -12,16 +12,20 @@ function App() {
 
   useEffect(() => {
     const resize = () => {
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
 
-      const scaleX = viewportWidth / DESIGN_WIDTH;
-      const scaleY = viewportHeight / DESIGN_HEIGHT;
+      // Mobile
+      if (width < 768) {
+        setScale(1);
+        return;
+      }
 
-      // Always make the complete 1500x900 design fit
-      const calculatedScale = Math.min(scaleX, scaleY);
+      // Desktop keeps the original 1500x900 composition
+      const scaleX = width / DESIGN_WIDTH;
+      const scaleY = height / DESIGN_HEIGHT;
 
-      setScale(calculatedScale);
+      setScale(Math.min(scaleX, scaleY));
     };
 
     resize();
@@ -34,27 +38,22 @@ function App() {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#092b5d]">
-
-      {/* =====================================================
-          BACKGROUND
-      ===================================================== */}
-
+    <main className="fixed inset-0 h-svh w-full overflow-hidden bg-[#092b5d]">
+      {/* BACKGROUND */}
       <div
         className="
-          absolute
-          inset-0
+          absolute inset-0
           bg-[radial-gradient(circle_at_80%_25%,rgba(67,143,232,0.42),transparent_32%),radial-gradient(circle_at_10%_0%,rgba(62,121,202,0.35),transparent_30%),linear-gradient(135deg,#123d79_0%,#0b2f65_45%,#082753_100%)]
         "
       />
 
-      {/* Top-left background shape */}
-
+      {/* Desktop decorative shapes */}
       <div
         className="
           absolute
           -left-[180px]
           -top-[380px]
+          hidden
           h-[720px]
           w-[950px]
           rotate-[28deg]
@@ -62,106 +61,127 @@ function App() {
           bg-gradient-to-br
           from-[#386da8]/45
           to-transparent
+          md:block
         "
       />
-
-      {/* Center background glow */}
 
       <div
         className="
           absolute
           left-[45%]
           top-[35%]
+          hidden
           h-[430px]
           w-[650px]
           rounded-full
           bg-[#164b91]/50
+          md:block
         "
       />
-
-      {/* Bottom background shape */}
 
       <div
         className="
           absolute
           -bottom-[380px]
           left-[35%]
+          hidden
           h-[650px]
           w-[900px]
           rounded-full
           bg-[#22599b]/45
+          md:block
         "
       />
-
-      {/* Right background shape */}
 
       <div
         className="
           absolute
           -right-[260px]
           top-[38%]
+          hidden
           h-[580px]
           w-[650px]
           rounded-full
           bg-[#2865ad]/35
+          md:block
         "
       />
 
-      {/* =====================================================
-          FIXED DESIGN
-      ===================================================== */}
+      {/* MOBILE BACKGROUND SHAPES */}
+      <div
+        className="
+          absolute
+          -bottom-[180px]
+          -left-[100px]
+          h-[390px]
+          w-[390px]
+          rounded-full
+          bg-[#174b8d]/60
+          md:hidden
+        "
+      />
 
+      <div
+        className="
+          absolute
+          -right-[170px]
+          bottom-[30px]
+          h-[350px]
+          w-[350px]
+          rounded-full
+          bg-[#2865ad]/30
+          md:hidden
+        "
+      />
+
+      {/* DESKTOP DESIGN CANVAS / MOBILE FULL SCREEN */}
       <div
         className="
           absolute
           left-0
           top-0
-          h-[900px]
-          w-[1500px]
+          h-full
+          w-full
+          md:h-[900px]
+          md:w-[1500px]
         "
         style={{
           transform: `scale(${scale})`,
           transformOrigin: "top left",
         }}
       >
-
-        {/* ===================================================
-            LOGO
-        =================================================== */}
-
+        {/* LOGO */}
         <div
           className="
             absolute
-            left-[70px]
-            top-[45px]
+            left-[22px]
+            top-[22px]
+            md:left-[70px]
+            md:top-[45px]
           "
         >
           <Logo />
         </div>
 
-        {/* ===================================================
-            HERO
-        =================================================== */}
-
+        {/* HERO */}
         <div
           className="
             absolute
-            left-[70px]
-            top-[165px]
+            left-[22px]
+            right-[22px]
+            top-[92px]
+            md:left-[70px]
+            md:right-auto
+            md:top-[165px]
           "
         >
           <HeroContent />
         </div>
 
-        {/* ===================================================
-            PHONES
-        =================================================== */}
-
+        {/* PHONES */}
         <PhoneSection />
-
       </div>
-
-    </div>
+    </main>
   );
 }
 

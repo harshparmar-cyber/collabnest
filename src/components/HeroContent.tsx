@@ -12,403 +12,265 @@ const HeroContent = () => {
       className="
         relative
         z-20
-        w-[590px]
-        shrink-0
+        w-full
         text-white
+        md:w-[590px]
       "
     >
-      {/* =========================================
-          MAIN HEADING
-      ========================================= */}
-
+      {/* HEADING */}
       <h1
         className="
-          text-[68px]
+          text-[36px]
           font-bold
-          leading-[1.05]
-          tracking-[-3px]
+          leading-[0.98]
+          tracking-[-1.7px]
           text-white
+          min-[390px]:text-[39px]
+          md:text-[68px]
+          md:leading-[1.05]
+          md:tracking-[-3px]
         "
       >
         Find your
         <br />
-
         project partner.
         <br />
-
         Turn ideas into
         <br />
-
-        <span
-          className="
-            bg-gradient-to-r
-            from-[#6ca9e8]
-            via-[#acd5f8]
-            to-[#5592d5]
-            bg-clip-text
-            text-transparent
-          "
-        >
+        <span className="bg-gradient-to-r from-[#6ca9e8] via-[#acd5f8] to-[#5592d5] bg-clip-text text-transparent">
           real projects.
         </span>
       </h1>
 
-      {/* =========================================
-          UNDERLINE
-      ========================================= */}
-
-      <div
-        className="
-          relative
-          mt-[10px]
-          h-[8px]
-          w-[295px]
-        "
-      >
-        <div
-          className="
-            absolute
-            left-0
-            top-0
-            h-[3px]
-            w-[285px]
-            rotate-[-3deg]
-            rounded-full
-            bg-[#9bc9f5]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            right-0
-            top-[2px]
-            h-[6px]
-            w-[6px]
-            rounded-full
-            bg-[#9bc9f5]
-          "
-        />
-      </div>
-
-      {/* =========================================
-          DESCRIPTION
-      ========================================= */}
-
+      {/* DESCRIPTION */}
       <p
         className="
-          mt-[20px]
-          w-[570px]
-          text-[19px]
-          font-normal
-          leading-[1.65]
-          text-[#c8dcf2]
+          mt-[9px]
+          max-w-[335px]
+          text-[10px]
+          leading-[1.35]
+          text-white/90
+          min-[390px]:text-[11px]
+          md:mt-[18px]
+          md:w-[570px]
+          md:max-w-none
+          md:text-[19px]
+          md:leading-[1.45]
         "
       >
-        Connect with like-minded students, collaborate
-        <br />
-        on projects, share ideas, and build something
-        <br />
-        amazing — together.
+        Connect with like-minded students, collaborate on projects, share
+        ideas, and build something amazing — together.
       </p>
 
-      {/* =========================================
-          FEATURE CARDS
-      ========================================= */}
-
+      {/* FEATURES */}
       <div
         className="
-          mt-[32px]
+          mt-[14px]
           grid
+          w-full
+          max-w-[330px]
           grid-cols-4
-          gap-x-[18px]
+          gap-[7px]
+          md:mt-[28px]
+          md:w-[570px]
+          md:max-w-none
+          md:gap-[20px]
         "
       >
-        {/* -----------------------------------------
-            FIND COLLABORATORS
-        ----------------------------------------- */}
-
-        <div className="w-[125px]">
+        {/* COLLABORATORS */}
+        <div className="w-[70px] md:w-[125px]">
           <div
             className="
               flex
-              h-[56px]
-              w-[56px]
+              h-[32px]
+              w-[32px]
               items-center
               justify-center
-              rounded-[15px]
+              rounded-[9px]
               border
-              border-[#5793d3]/40
-              bg-gradient-to-br
-              from-[#2868ac]
-              to-[#174d8b]
-              shadow-[0_8px_25px_rgba(0,0,0,0.18)]
+              border-white/15
+              bg-white/10
+              md:h-[56px]
+              md:w-[56px]
+              md:rounded-[14px]
             "
           >
             <Users
+              size={17}
+              strokeWidth={1.7}
+              className="md:hidden"
+            />
+
+            <Users
               size={27}
-              strokeWidth={1.8}
-              className="text-[#e4f2ff]"
+              strokeWidth={1.7}
+              className="hidden md:block"
             />
           </div>
 
-          <h3
-            className="
-              mt-[12px]
-              whitespace-nowrap
-              text-[14px]
-              font-semibold
-              text-white
-            "
-          >
+          <h3 className="mt-[5px] text-[7px] font-bold md:mt-[10px] md:text-[12px]">
             Find Collaborators
           </h3>
 
-          <p
-            className="
-              mt-[5px]
-              text-[12px]
-              leading-[1.45]
-              text-[#a9c7e6]
-            "
-          >
-            Meet students with
-            <br />
-            similar goals and
-            <br />
-            interests.
+          <p className="mt-[2px] text-[6px] leading-[1.3] text-white/75 md:mt-[5px] md:text-[10px]">
+            Meet students with similar goals and interests.
           </p>
         </div>
 
-        {/* -----------------------------------------
-            CHAT & DISCUSS
-        ----------------------------------------- */}
-
-        <div className="w-[125px]">
+        {/* CHAT */}
+        <div className="w-[70px] md:w-[125px]">
           <div
             className="
               flex
-              h-[56px]
-              w-[56px]
+              h-[32px]
+              w-[32px]
               items-center
               justify-center
-              rounded-[15px]
+              rounded-[9px]
               border
-              border-[#5793d3]/40
-              bg-gradient-to-br
-              from-[#2868ac]
-              to-[#174d8b]
-              shadow-[0_8px_25px_rgba(0,0,0,0.18)]
+              border-white/15
+              bg-white/10
+              md:h-[56px]
+              md:w-[56px]
+              md:rounded-[14px]
             "
           >
             <MessageCircle
+              size={17}
+              strokeWidth={1.7}
+              className="md:hidden"
+            />
+
+            <MessageCircle
               size={27}
-              strokeWidth={1.8}
-              className="text-[#e4f2ff]"
+              strokeWidth={1.7}
+              className="hidden md:block"
             />
           </div>
 
-          <h3
-            className="
-              mt-[12px]
-              whitespace-nowrap
-              text-[14px]
-              font-semibold
-              text-white
-            "
-          >
+          <h3 className="mt-[5px] text-[7px] font-bold md:mt-[10px] md:text-[12px]">
             Chat & Discuss
           </h3>
 
-          <p
-            className="
-              mt-[5px]
-              text-[12px]
-              leading-[1.45]
-              text-[#a9c7e6]
-            "
-          >
-            Share ideas, ask
-            <br />
-            questions, plan your
-            <br />
-            project.
+          <p className="mt-[2px] text-[6px] leading-[1.3] text-white/75 md:mt-[5px] md:text-[10px]">
+            Share ideas, discuss plans, and plan your project.
           </p>
         </div>
 
-        {/* -----------------------------------------
-            JOIN CALLS
-        ----------------------------------------- */}
-
-        <div className="w-[125px]">
+        {/* CALLS */}
+        <div className="w-[70px] md:w-[125px]">
           <div
             className="
               flex
-              h-[56px]
-              w-[56px]
+              h-[32px]
+              w-[32px]
               items-center
               justify-center
-              rounded-[15px]
+              rounded-[9px]
               border
-              border-[#5793d3]/40
-              bg-gradient-to-br
-              from-[#2868ac]
-              to-[#174d8b]
-              shadow-[0_8px_25px_rgba(0,0,0,0.18)]
+              border-white/15
+              bg-white/10
+              md:h-[56px]
+              md:w-[56px]
+              md:rounded-[14px]
             "
           >
             <Video
+              size={17}
+              strokeWidth={1.7}
+              className="md:hidden"
+            />
+
+            <Video
               size={27}
-              strokeWidth={1.8}
-              className="text-[#e4f2ff]"
+              strokeWidth={1.7}
+              className="hidden md:block"
             />
           </div>
 
-          <h3
-            className="
-              mt-[12px]
-              whitespace-nowrap
-              text-[14px]
-              font-semibold
-              text-white
-            "
-          >
+          <h3 className="mt-[5px] text-[7px] font-bold md:mt-[10px] md:text-[12px]">
             Join Calls
           </h3>
 
-          <p
-            className="
-              mt-[5px]
-              text-[12px]
-              leading-[1.45]
-              text-[#a9c7e6]
-            "
-          >
-            Connect through voice
-            <br />
-            or video.
+          <p className="mt-[2px] text-[6px] leading-[1.3] text-white/75 md:mt-[5px] md:text-[10px]">
+            Connect through video calls when needed.
           </p>
         </div>
 
-        {/* -----------------------------------------
-            BUILD & GROW
-        ----------------------------------------- */}
-
-        <div className="w-[125px]">
+        {/* BUILD */}
+        <div className="w-[70px] md:w-[125px]">
           <div
             className="
               flex
-              h-[56px]
-              w-[56px]
+              h-[32px]
+              w-[32px]
               items-center
               justify-center
-              rounded-[15px]
+              rounded-[9px]
               border
-              border-[#5793d3]/40
-              bg-gradient-to-br
-              from-[#2868ac]
-              to-[#174d8b]
-              shadow-[0_8px_25px_rgba(0,0,0,0.18)]
+              border-white/15
+              bg-white/10
+              md:h-[56px]
+              md:w-[56px]
+              md:rounded-[14px]
             "
           >
             <Rocket
+              size={17}
+              strokeWidth={1.7}
+              className="md:hidden"
+            />
+
+            <Rocket
               size={27}
-              strokeWidth={1.8}
-              className="text-[#e4f2ff]"
+              strokeWidth={1.7}
+              className="hidden md:block"
             />
           </div>
 
-          <h3
-            className="
-              mt-[12px]
-              whitespace-nowrap
-              text-[14px]
-              font-semibold
-              text-white
-            "
-          >
+          <h3 className="mt-[5px] text-[7px] font-bold md:mt-[10px] md:text-[12px]">
             Build & Grow
           </h3>
 
-          <p
-            className="
-              mt-[5px]
-              text-[12px]
-              leading-[1.45]
-              text-[#a9c7e6]
-            "
-          >
-            Turn your ideas into
-            <br />
-            real-world projects.
+          <p className="mt-[2px] text-[6px] leading-[1.3] text-white/75 md:mt-[5px] md:text-[10px]">
+            Turn your ideas into real-world projects.
           </p>
         </div>
       </div>
 
-      {/* =========================================
-          CTA
-      ========================================= */}
-
-      <div
+      {/* CTA */}
+      <button
         className="
-          mt-[31px]
+          mt-[13px]
           flex
+          h-[35px]
+          w-[120px]
           items-center
-          gap-[15px]
+          justify-center
+          gap-[7px]
+          rounded-full
+          bg-gradient-to-r
+          from-[#6eb5f2]
+          to-[#3d8bd4]
+          text-[9px]
+          font-semibold
+          text-white
+          shadow-lg
+          shadow-black/10
+          transition
+          hover:scale-105
+          min-[390px]:mt-[15px]
+          md:mt-[28px]
+          md:h-[56px]
+          md:w-[182px]
+          md:gap-[10px]
+          md:text-[15px]
         "
       >
-        {/* Get Started */}
-
-        <button
-          type="button"
-          className="
-            group
-            flex
-            h-[56px]
-            w-[182px]
-            items-center
-            justify-center
-            gap-[22px]
-            rounded-full
-            bg-gradient-to-r
-            from-[#79b6f0]
-            to-[#2776d4]
-            text-[16px]
-            font-semibold
-            text-white
-            shadow-[0_12px_35px_rgba(35,111,201,0.35)]
-            transition-transform
-            duration-200
-            hover:scale-[1.02]
-          "
-        >
-          <span>Get Started</span>
-
-          <ArrowRight
-            size={21}
-            strokeWidth={2}
-            className="
-              transition-transform
-              duration-200
-              group-hover:translate-x-1
-            "
-          />
-        </button>
-
-        {/* CTA supporting text */}
-
-        <p
-          className="
-            text-[12px]
-            leading-[1.45]
-            text-[#8fb5dc]
-          "
-        >
-          Your next big project
-          <br />
-          might be just a message away.
-        </p>
-      </div>
+        Get Started
+        <ArrowRight size={13} className="md:hidden" />
+        <ArrowRight size={20} className="hidden md:block" />
+      </button>
     </section>
   );
 };
