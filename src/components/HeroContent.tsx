@@ -5,8 +5,11 @@ import {
   Users,
   Video,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const HeroContent = () => {
+  const navigate = useNavigate();
+
   return (
     <section
       className="
@@ -37,7 +40,16 @@ const HeroContent = () => {
         <br />
         Turn ideas into
         <br />
-        <span className="bg-gradient-to-r from-[#6ca9e8] via-[#acd5f8] to-[#5592d5] bg-clip-text text-transparent">
+        <span
+          className="
+            bg-gradient-to-r
+            from-[#6ca9e8]
+            via-[#acd5f8]
+            to-[#5592d5]
+            bg-clip-text
+            text-transparent
+          "
+        >
           real projects.
         </span>
       </h1>
@@ -240,6 +252,8 @@ const HeroContent = () => {
 
       {/* CTA */}
       <button
+        type="button"
+        onClick={() => navigate("/login")}
         className="
           mt-[13px]
           flex
@@ -258,7 +272,9 @@ const HeroContent = () => {
           shadow-lg
           shadow-black/10
           transition
+          duration-200
           hover:scale-105
+          active:scale-95
           min-[390px]:mt-[15px]
           md:mt-[28px]
           md:h-[56px]
@@ -268,8 +284,16 @@ const HeroContent = () => {
         "
       >
         Get Started
-        <ArrowRight size={13} className="md:hidden" />
-        <ArrowRight size={20} className="hidden md:block" />
+
+        <ArrowRight
+          size={13}
+          className="md:hidden"
+        />
+
+        <ArrowRight
+          size={20}
+          className="hidden md:block"
+        />
       </button>
     </section>
   );

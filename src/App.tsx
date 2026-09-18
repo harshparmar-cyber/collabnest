@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+} from "react-router-dom";
 
 import HeroContent from "./components/HeroContent";
 import Logo from "./components/Logo";
 import PhoneSection from "./components/PhoneSection";
+import AuthPage from "./components/AuthPage";
 
-function App() {
+function LandingPage() {
   const DESIGN_WIDTH = 1500;
   const DESIGN_HEIGHT = 900;
 
@@ -16,8 +22,8 @@ function App() {
       const height = window.innerHeight;
 
       // MOBILE
-      // Keep the design at its normal size and allow
-      // the webpage to scroll vertically.
+      // Keep the design at its normal size
+      // and allow the webpage to scroll vertically.
       if (width < 768) {
         setScale(1);
         return;
@@ -58,7 +64,10 @@ function App() {
         md:overflow-hidden
       "
     >
+      {/* ================================================== */}
       {/* BACKGROUND */}
+      {/* ================================================== */}
+
       <div
         className="
           absolute
@@ -67,7 +76,9 @@ function App() {
         "
       />
 
+      {/* ================================================== */}
       {/* DESKTOP DECORATIVE SHAPES */}
+      {/* ================================================== */}
 
       <div
         className="
@@ -128,7 +139,9 @@ function App() {
         "
       />
 
+      {/* ================================================== */}
       {/* MOBILE BACKGROUND SHAPES */}
+      {/* ================================================== */}
 
       <div
         className="
@@ -156,7 +169,9 @@ function App() {
         "
       />
 
+      {/* ================================================== */}
       {/* DESIGN CANVAS */}
+      {/* ================================================== */}
 
       <div
         className="
@@ -174,7 +189,9 @@ function App() {
           transformOrigin: "top left",
         }}
       >
+        {/* ================================================== */}
         {/* LOGO */}
+        {/* ================================================== */}
 
         <div
           className="
@@ -189,7 +206,9 @@ function App() {
           <Logo />
         </div>
 
+        {/* ================================================== */}
         {/* HERO */}
+        {/* ================================================== */}
 
         <div
           className="
@@ -206,11 +225,46 @@ function App() {
           <HeroContent />
         </div>
 
+        {/* ================================================== */}
         {/* PHONES */}
+        {/* ================================================== */}
 
         <PhoneSection />
       </div>
     </main>
+  );
+}
+
+
+/* ========================================================= */
+/* MAIN APP / ROUTING */
+/* ========================================================= */
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+
+        {/* LANDING PAGE */}
+        <Route
+          path="/"
+          element={<LandingPage />}
+        />
+
+        {/* LOGIN */}
+        <Route
+          path="/login"
+          element={<AuthPage />}
+        />
+
+        {/* SIGN UP */}
+        <Route
+          path="/signup"
+          element={<AuthPage />}
+        />
+
+      </Routes>
+    </BrowserRouter>
   );
 }
 
