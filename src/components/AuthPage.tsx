@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   Eye,
@@ -16,6 +16,7 @@ import rightStudent from "../assets/right.png";
 
 const AuthPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isSignup = location.pathname === "/signup";
 
@@ -49,37 +50,98 @@ const AuthPage = () => {
   }, [isSignup]);
 
   /* ================================================== */
-  /* TEMPORARY LOGIN */
+  /* LOGIN */
   /* ================================================== */
+const handleLogin = async (
+  e: React.FormEvent<HTMLFormElement>
+) => {
+  e.preventDefault();
 
-  const handleLogin = (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
-    e.preventDefault();
+  setMessage("");
 
-    setMessage(
-      "Login will be connected with Firebase soon."
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/auth/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      }
     );
-  };
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMessage(data.message || "Login failed.");
+      return;
+    }
+
+    setMessage("Login successful! 🎉");
+
+    navigate("/dashboard");
+  } catch (error) {
+    console.error("Login error:", error);
+    setMessage(
+      "Unable to connect to the server. Please try again."
+    );
+  }
+};
 
   /* ================================================== */
   /* TEMPORARY SIGNUP */
   /* ================================================== */
+    const handleSignup = async (
+  e: React.FormEvent<HTMLFormElement>
+) => {
+  e.preventDefault();
 
-  const handleSignup = (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
-    e.preventDefault();
+  setMessage("");
 
-    if (password !== confirmPassword) {
-      setMessage("Passwords do not match.");
+  if (password !== confirmPassword) {
+    setMessage("Passwords do not match.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/auth/signup",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMessage(data.message || "Signup failed.");
       return;
     }
 
+    setMessage("Account created successfully! 🎉");
+
+    navigate("/login");
+  } catch (error) {
+    console.error("Signup error:", error);
     setMessage(
-      "Account creation will be connected with Firebase soon."
+      "Unable to connect to the server. Please try again."
     );
-  };
+  }
+};
 
   return (
     <main

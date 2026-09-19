@@ -9,6 +9,8 @@ import HeroContent from "./components/HeroContent";
 import Logo from "./components/Logo";
 import PhoneSection from "./components/PhoneSection";
 import AuthPage from "./components/AuthPage";
+import DashboardPage from "./components/DashboardPage";
+
 
 function LandingPage() {
   const DESIGN_WIDTH = 1500;
@@ -262,6 +264,8 @@ function App() {
           path="/signup"
           element={<AuthPage />}
         />
+
+        <Route path="/dashboard" element={<DashboardPage />} />
 
       </Routes>
     </BrowserRouter>
