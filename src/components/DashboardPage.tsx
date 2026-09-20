@@ -3,7 +3,7 @@ import {
   BriefcaseBusiness,
   CheckCircle2,
   ChevronRight,
-  Code2,
+  Code,
   FilePlus2,
   Home,
   Lightbulb,
@@ -20,10 +20,14 @@ import {
   Zap,
 } from "lucide-react";
 
+import students from "../assets/students.png";
+
 const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
-      {/* ================= TOP NAVBAR ================= */}
+      {/* =========================================================
+          TOP NAVBAR
+      ========================================================= */}
       <header className="fixed left-0 right-0 top-0 z-50 h-[70px] bg-gradient-to-r from-[#073b88] to-[#0b4da5] text-white shadow-lg">
         <div className="flex h-full items-center">
           {/* Logo */}
@@ -37,7 +41,7 @@ const DashboardPage = () => {
             </span>
           </div>
 
-          {/* Search */}
+          {/* Top Search */}
           <div className="flex flex-1 items-center justify-center px-5">
             <div className="flex h-[42px] w-full max-w-[510px] items-center gap-3 rounded-full bg-white/10 px-5 backdrop-blur-md transition hover:bg-white/15">
               <Search size={19} className="text-white/80" />
@@ -50,9 +54,8 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {/* Right side */}
+          {/* Right Side */}
           <div className="flex items-center gap-5 px-6">
-            {/* Notification */}
             <button
               type="button"
               className="relative flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/10"
@@ -64,7 +67,6 @@ const DashboardPage = () => {
               </span>
             </button>
 
-            {/* Profile */}
             <button
               type="button"
               className="flex items-center gap-3 rounded-full px-1 py-1 transition hover:bg-white/10"
@@ -86,9 +88,10 @@ const DashboardPage = () => {
         </div>
       </header>
 
-      {/* ================= SIDEBAR ================= */}
+      {/* =========================================================
+          SIDEBAR
+      ========================================================= */}
       <aside className="fixed bottom-0 left-0 top-[70px] z-40 hidden w-[240px] flex-col bg-gradient-to-b from-[#073b88] to-[#062f70] text-white md:flex">
-        {/* Navigation */}
         <nav className="flex-1 px-3 py-5">
           <SidebarItem
             icon={<Home size={20} />}
@@ -156,31 +159,42 @@ const DashboardPage = () => {
         </div>
       </aside>
 
-      {/* ================= MAIN CONTENT ================= */}
+      {/* =========================================================
+          MAIN CONTENT
+      ========================================================= */}
       <main className="h-screen overflow-y-auto pt-[70px] md:ml-[240px]">
         <div className="mx-auto max-w-[1500px] p-5 md:p-7">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
-            {/* ================= LEFT CONTENT ================= */}
+
+            {/* =====================================================
+                LEFT CONTENT
+            ===================================================== */}
             <section>
-              {/* Welcome Banner */}
+
+              {/* ===================================================
+                  WELCOME BANNER
+              =================================================== */}
               <div className="relative min-h-[240px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-[#eaf5ff] via-[#dceeff] to-[#c9e4ff] p-7 shadow-sm">
+
                 {/* Decorative circles */}
                 <div className="absolute -right-16 -top-20 h-52 w-52 rounded-full bg-white/30" />
+
                 <div className="absolute bottom-[-80px] right-[35%] h-48 w-48 rounded-full bg-[#8cc6ff]/20" />
 
-                <div className="relative z-10 max-w-[600px]">
+                {/* LEFT CONTENT */}
+                <div className="relative z-20 w-full max-w-[520px]">
                   <h1 className="text-[30px] font-bold leading-tight tracking-[-1px] text-[#103b76] md:text-[32px]">
                     Welcome back, Harsh!{" "}
                     <span className="inline-block">👋</span>
                   </h1>
 
-                  <p className="mt-3 max-w-[530px] text-[14px] leading-6 text-[#315f96]">
-                    Great to see you again! Find collaborators, explore
-                    projects and turn your ideas into reality.
+                  <p className="mt-3 max-w-[500px] text-[14px] leading-6 text-[#315f96]">
+                    Great to see you again! Find collaborators & explore
+                    projects
                   </p>
 
                   {/* Search */}
-                  <div className="mt-6 flex h-[48px] max-w-[470px] items-center gap-3 rounded-full bg-white px-4 shadow-md">
+                  <div className="mt-6 flex h-[48px] w-full max-w-[470px] items-center gap-3 rounded-full bg-white px-4 shadow-md">
                     <Search
                       size={19}
                       className="shrink-0 text-[#5595d8]"
@@ -189,7 +203,7 @@ const DashboardPage = () => {
                     <input
                       type="text"
                       placeholder="Search projects, skills or students..."
-                      className="w-full bg-transparent text-[12px] text-[#12355b] outline-none placeholder:text-gray-400"
+                      className="w-full min-w-0 bg-transparent text-[12px] text-[#12355b] outline-none placeholder:text-gray-400"
                     />
 
                     <button
@@ -201,70 +215,21 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-                {/* Illustration */}
-                <div className="absolute bottom-0 right-[-5px] hidden w-[390px] lg:block">
-                  <div className="relative flex h-[230px] items-end justify-center">
-                    {/* Laptop */}
-                    <div className="absolute bottom-2 z-20 h-[72px] w-[130px] rounded-lg border-[5px] border-[#263e58] bg-[#d9e9f8] shadow-xl">
-                      <div className="flex h-full items-center justify-center">
-                        <Users
-                          size={28}
-                          className="text-[#5595d8]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Student 1 */}
-                    <div className="absolute bottom-[68px] left-[75px] z-10 flex flex-col items-center">
-                      <div className="flex h-[65px] w-[65px] items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-[#ffcc9a] to-[#d88c5e] text-[25px]">
-                        👨🏻
-                      </div>
-
-                      <div className="h-[70px] w-[82px] rounded-t-[45px] bg-[#263f6f]" />
-                    </div>
-
-                    {/* Student 2 */}
-                    <div className="absolute bottom-[65px] left-[145px] z-30 flex flex-col items-center">
-                      <div className="flex h-[67px] w-[67px] items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-[#f5c49d] to-[#c98663] text-[25px]">
-                        👩🏻
-                      </div>
-
-                      <div className="h-[75px] w-[84px] rounded-t-[45px] bg-[#ef6f58]" />
-                    </div>
-
-                    {/* Student 3 */}
-                    <div className="absolute bottom-[70px] right-[85px] z-10 flex flex-col items-center">
-                      <div className="flex h-[64px] w-[64px] items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-[#7e583e] to-[#3e281d] text-[24px]">
-                        👨🏽
-                      </div>
-
-                      <div className="h-[72px] w-[82px] rounded-t-[45px] bg-[#159b83]" />
-                    </div>
-
-                    {/* Student 4 */}
-                    <div className="absolute bottom-[65px] right-[20px] z-20 flex flex-col items-center">
-                      <div className="flex h-[65px] w-[65px] items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-[#efbd91] to-[#a96b4d] text-[25px]">
-                        👩🏼
-                      </div>
-
-                      <div className="h-[72px] w-[82px] rounded-t-[45px] bg-[#e8a72f]" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Better ideas */}
-                <div className="absolute right-[25px] top-[28px] hidden rotate-[-7deg] text-center font-serif text-[17px] font-bold italic text-[#0c55a7] lg:block">
-                  Better
-                  <br />
-                  Ideas
-                  <br />
-                  Together
-                  <br />
-                  <span className="text-[20px]">↗</span>
+                {/* =================================================
+                    STUDENTS PNG
+                ================================================= */}
+                <div className="absolute bottom-0 right-[-5px] hidden w-[360px] lg:block xl:w-[400px]">
+                  <img
+                    src={students}
+                    alt="Students collaborating on a project"
+                    className="block w-full object-contain object-bottom"
+                  />
                 </div>
               </div>
 
-              {/* Quick Actions */}
+              {/* ===================================================
+                  QUICK ACTIONS
+              =================================================== */}
               <div className="mt-6 grid gap-4 md:grid-cols-3">
                 <QuickActionCard
                   icon={<FilePlus2 size={22} />}
@@ -291,7 +256,9 @@ const DashboardPage = () => {
                 />
               </div>
 
-              {/* Featured Projects */}
+              {/* ===================================================
+                  FEATURED PROJECTS
+              =================================================== */}
               <div className="mt-8">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -316,7 +283,7 @@ const DashboardPage = () => {
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <ProjectCard
-                    icon={<Code2 size={23} />}
+                    icon={<Code size={23} />}
                     iconClass="bg-purple-100 text-purple-600"
                     title="AI Mock Interview Platform"
                     description="Build an AI-powered mock interview platform using React, Node.js and Gemini API."
@@ -382,8 +349,11 @@ const DashboardPage = () => {
               </div>
             </section>
 
-            {/* ================= RIGHT COLUMN ================= */}
+            {/* =====================================================
+                RIGHT COLUMN
+            ===================================================== */}
             <aside className="space-y-5">
+
               {/* Profile Completion */}
               <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
                 <h2 className="text-[16px] font-bold text-[#123d78]">
@@ -391,9 +361,8 @@ const DashboardPage = () => {
                 </h2>
 
                 <div className="mt-4 flex items-center gap-4">
-                  {/* Progress circle */}
                   <div className="relative flex h-[78px] w-[78px] shrink-0 items-center justify-center rounded-full border-[8px] border-[#dceeff]">
-                    <div className="absolute inset-[-8px] rounded-full border-[8px] border-transparent border-l-[#1684ff] border-t-[#1684ff] border-r-[#1684ff] rotate-[-30deg]" />
+                    <div className="absolute inset-[-8px] rotate-[-30deg] rounded-full border-[8px] border-transparent border-l-[#1684ff] border-r-[#1684ff] border-t-[#1684ff]" />
 
                     <span className="text-[17px] font-bold text-[#123d78]">
                       70%
