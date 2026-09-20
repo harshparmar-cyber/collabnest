@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   ArrowRight,
   Eye,
@@ -36,6 +40,9 @@ const AuthPage = () => {
 
   const [message, setMessage] = useState("");
 
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
   /* ================================================== */
   /* FIGURE ANIMATION */
   /* ================================================== */
@@ -54,92 +61,117 @@ const AuthPage = () => {
   /* ================================================== */
   /* LOGIN */
   /* ================================================== */
-const handleLogin = async (
-  e: React.FormEvent<HTMLFormElement>
-) => {
-  e.preventDefault();
 
-  setMessage("");
+  const handleLogin = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
 
-  try {
-    const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+    if (isSubmitting) return;
+
+    setMessage("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(
+          data.message || "Login failed."
+        );
+        return;
       }
-    );
 
-    const data = await response.json();
+      setMessage("Login successful! 🎉");
 
-    if (!response.ok) {
-      setMessage(data.message || "Login failed.");
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+
+      setMessage(
+        "Unable to connect to the server. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  /* ================================================== */
+  /* SIGNUP */
+  /* ================================================== */
+
+  const handleSignup = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+
+    if (isSubmitting) return;
+
+    setMessage("");
+
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match.");
       return;
     }
 
-    setMessage("Login successful! 🎉");
+    setIsSubmitting(true);
 
-    navigate("/dashboard");
-  } catch (error) {
-    console.error("Login error:", error);
-    setMessage(
-      "Unable to connect to the server. Please try again."
-    );
-  }
-};
+    try {
+      const response = await fetch(
+        `${API_URL}/api/auth/signup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+          }),
+        }
+      );
 
-  /* ================================================== */
-  /* TEMPORARY SIGNUP */
-  /* ================================================== */
-    const handleSignup = async (
-  e: React.FormEvent<HTMLFormElement>
-) => {
-  e.preventDefault();
+      const data = await response.json();
 
-  setMessage("");
-
-  if (password !== confirmPassword) {
-    setMessage("Passwords do not match.");
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/api/auth/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-        }),
+      if (!response.ok) {
+        setMessage(
+          data.message || "Signup failed."
+        );
+        return;
       }
-    );
 
-    const data = await response.json();
+      setMessage(
+        "Account created successfully! 🎉"
+      );
 
-    if (!response.ok) {
-      setMessage(data.message || "Signup failed.");
-      return;
+      navigate("/login");
+    } catch (error) {
+      console.error("Signup error:", error);
+
+      setMessage(
+        "Unable to connect to the server. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setMessage("Account created successfully! 🎉");
-
-    navigate("/login");
-  } catch (error) {
-    console.error("Signup error:", error);
-    setMessage(
-      "Unable to connect to the server. Please try again."
-    );
-  }
-};
+  };
 
   return (
     <main
@@ -705,7 +737,8 @@ const handleLogin = async (
 
               <button
                 type="submit"
-                className="
+                disabled={isSubmitting}
+                className={`
                   flex
                   h-[45px]
                   w-full
@@ -724,16 +757,40 @@ const handleLogin = async (
                   shadow-[#0759bd]/25
                   transition
                   duration-200
-                  hover:-translate-y-[1px]
-                  hover:shadow-xl
-                  active:translate-y-0
-                "
+                  ${
+                    isSubmitting
+                      ? "cursor-not-allowed opacity-60"
+                      : "hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
+                  }
+                `}
               >
-                {isSignup
-                  ? "CREATE ACCOUNT"
-                  : "LOGIN"}
+                {isSubmitting ? (
+                  <>
+                    <span
+                      className="
+                        h-[14px]
+                        w-[14px]
+                        animate-spin
+                        rounded-full
+                        border-2
+                        border-white/40
+                        border-t-white
+                      "
+                    />
 
-                <ArrowRight size={15} />
+                    {isSignup
+                      ? "CREATING ACCOUNT..."
+                      : "LOGGING IN..."}
+                  </>
+                ) : (
+                  <>
+                    {isSignup
+                      ? "CREATE ACCOUNT"
+                      : "LOGIN"}
+
+                    <ArrowRight size={15} />
+                  </>
+                )}
               </button>
             </form>
 
