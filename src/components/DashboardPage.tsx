@@ -3,7 +3,6 @@ import {
   BriefcaseBusiness,
   CheckCircle2,
   ChevronRight,
-  CircleUserRound,
   Code2,
   FilePlus2,
   Home,
@@ -18,7 +17,6 @@ import {
   Sparkles,
   Star,
   Users,
-  Video,
   Zap,
 } from "lucide-react";
 
