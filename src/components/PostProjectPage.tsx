@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
@@ -135,7 +136,28 @@ const PostProjectPage = () => {
   };
 
   return (
-    <div className="fixed inset-0 overflow-y-auto bg-[#06152f] text-white">
+   
+  <motion.div
+    initial={{
+      opacity: 0,
+      x: 40,
+      scale: 0.99,
+    }}
+    animate={{
+      opacity: 1,
+      x: 0,
+      scale: 1,
+    }}
+    exit={{
+      opacity: 0,
+      x: -20,
+    }}
+    transition={{
+      duration: 0.3,
+      ease: "easeOut",
+    }}
+    className="fixed inset-0 overflow-y-auto bg-[#06152f] text-white"
+  >
       {/* =====================================================
           ANIMATED BACKGROUND
       ====================================================== */}
@@ -1233,7 +1255,7 @@ const PostProjectPage = () => {
           </div>
         </section>
       </main>
-    </div>
+    </motion.div>
   );
 };
 

@@ -18,7 +18,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
 import students from "../assets/students.png";
 
 type SidebarItemProps = {
@@ -236,7 +235,6 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
-
       {/* =====================================================
           TOP NAVBAR
       ===================================================== */}
@@ -313,7 +311,6 @@ const DashboardPage = () => {
         </div>
       </header>
 
-
       {/* =====================================================
           SIDEBAR
       ===================================================== */}
@@ -367,7 +364,6 @@ const DashboardPage = () => {
 
         </nav>
 
-
         {/* Sidebar CTA */}
         <div className="mx-4 mb-5 rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm">
 
@@ -392,7 +388,6 @@ const DashboardPage = () => {
 
         </div>
       </aside>
-
 
       {/* =====================================================
           MAIN CONTENT
@@ -428,10 +423,8 @@ const DashboardPage = () => {
 
                   <p className="mt-3 max-w-[520px] text-[14px] leading-6 text-[#315f96]">
                     Great to see you again! Find collaborators,
-                    explore projects and turn your ideas into
-                    reality.
+                    explore projects!
                   </p>
-
 
                   {/* Search */}
                   <div className="mt-6 flex h-[50px] w-full max-w-[520px] items-center gap-3 rounded-full bg-white px-4 shadow-md">
@@ -465,7 +458,6 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-
                 {/* STUDENTS IMAGE */}
                 <div className="pointer-events-none absolute bottom-0 right-[-5px] z-10 flex h-[245px] w-[52%] items-end justify-end">
 
@@ -484,7 +476,6 @@ const DashboardPage = () => {
                 </div>
 
               </div>
-
 
               {/* =================================================
                   QUICK ACTIONS
@@ -518,7 +509,6 @@ const DashboardPage = () => {
 
               </div>
 
-
               {/* =================================================
                   FEATURED PROJECTS
               ================================================= */}
@@ -547,7 +537,6 @@ const DashboardPage = () => {
                   </button>
 
                 </div>
-
 
                 <div className="grid gap-4 lg:grid-cols-2">
 
@@ -607,7 +596,6 @@ const DashboardPage = () => {
 
             </section>
 
-
             {/* =================================================
                 RIGHT SIDEBAR
             ================================================= */}
@@ -651,7 +639,6 @@ const DashboardPage = () => {
 
               </div>
 
-
               {/* =================================================
                   SUGGESTED COLLABORATORS
               ================================================= */}
@@ -671,7 +658,6 @@ const DashboardPage = () => {
                   </button>
 
                 </div>
-
 
                 <div className="mt-5 space-y-5">
 
@@ -724,7 +710,6 @@ const DashboardPage = () => {
 
               </div>
 
-
               {/* =================================================
                   RECENT ACTIVITY
               ================================================= */}
@@ -752,7 +737,6 @@ const DashboardPage = () => {
                   </button>
 
                 </div>
-
 
                 <div className="mt-5 space-y-4">
 
@@ -789,7 +773,6 @@ const DashboardPage = () => {
     </div>
   );
 };
-
 
 type ActivityItemProps = {
   icon: React.ReactNode;

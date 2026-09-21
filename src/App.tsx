@@ -3,7 +3,9 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  useLocation,
 } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 
 import HeroContent from "./components/HeroContent";
 import Logo from "./components/Logo";
@@ -12,6 +14,9 @@ import AuthPage from "./components/AuthPage";
 import DashboardPage from "./components/DashboardPage";
 import PostProjectPage from "./components/PostProjectPage";
 
+/* ========================================================= */
+/* LANDING PAGE */
+/* ========================================================= */
 
 function LandingPage() {
   const DESIGN_WIDTH = 1500;
@@ -25,16 +30,12 @@ function LandingPage() {
       const height = window.innerHeight;
 
       // MOBILE
-      // Keep the design at its normal size
-      // and allow the webpage to scroll vertically.
       if (width < 768) {
         setScale(1);
         return;
       }
 
       // DESKTOP
-      // Keep the original 1500x900 composition
-      // scaled to fit the viewport.
       const scaleX = width / DESIGN_WIDTH;
       const scaleY = height / DESIGN_HEIGHT;
 
@@ -238,16 +239,19 @@ function LandingPage() {
   );
 }
 
-
 /* ========================================================= */
-/* MAIN APP / ROUTING */
+/* ANIMATED ROUTES */
 /* ========================================================= */
 
-function App() {
+function AnimatedRoutes() {
+  const location = useLocation();
+
   return (
-    <BrowserRouter>
-      <Routes>
-
+    <AnimatePresence mode="sync">
+      <Routes
+        location={location}
+        key={location.pathname}
+      >
         {/* LANDING PAGE */}
         <Route
           path="/"
@@ -266,14 +270,30 @@ function App() {
           element={<AuthPage />}
         />
 
-        <Route path="/dashboard" element={<DashboardPage />} />
-
+        {/* DASHBOARD */}
         <Route
-  path="/post-project"
-  element={<PostProjectPage />}
-/>
+          path="/dashboard"
+          element={<DashboardPage />}
+        />
 
+        {/* POST PROJECT */}
+        <Route
+          path="/post-project"
+          element={<PostProjectPage />}
+        />
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+/* ========================================================= */
+/* MAIN APP */
+/* ========================================================= */
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AnimatedRoutes />
     </BrowserRouter>
   );
 }
