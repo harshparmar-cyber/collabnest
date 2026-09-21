@@ -10,6 +10,7 @@ import Logo from "./components/Logo";
 import PhoneSection from "./components/PhoneSection";
 import AuthPage from "./components/AuthPage";
 import DashboardPage from "./components/DashboardPage";
+import PostProjectPage from "./components/PostProjectPage";
 
 
 function LandingPage() {
@@ -266,6 +267,11 @@ function App() {
         />
 
         <Route path="/dashboard" element={<DashboardPage />} />
+
+        <Route
+  path="/post-project"
+  element={<PostProjectPage />}
+/>
 
       </Routes>
     </BrowserRouter>
