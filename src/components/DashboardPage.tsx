@@ -17,6 +17,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import students from "../assets/students.png";
 
@@ -233,6 +234,36 @@ const collaborators: Collaborator[] = [
 const DashboardPage = () => {
   const navigate = useNavigate();
 
+  const [userName, setUserName] = useState("User");
+
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/auth/me`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        setUserName(data.user.name);
+      } catch (error) {
+        console.error("Failed to fetch current user:", error);
+      }
+    };
+
+    fetchCurrentUser();
+  }, [API_URL]);
+
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
       {/* =====================================================
@@ -294,11 +325,11 @@ const DashboardPage = () => {
               className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
-                H
+                {userName.charAt(0).toUpperCase()}
               </div>
 
               <span className="hidden text-[13px] font-semibold lg:block">
-                Harsh Parmar
+                {userName}
               </span>
 
               <ChevronRight
@@ -417,7 +448,7 @@ const DashboardPage = () => {
                 <div className="relative z-20 max-w-[540px]">
 
                   <h1 className="text-[30px] font-bold leading-tight tracking-[-1px] text-[#103b76] md:text-[34px]">
-                    Welcome back, Harsh!{" "}
+                    Welcome back, {userName.split(" ")[0]}!{" "}
                     <span>👋</span>
                   </h1>
 
