@@ -22,6 +22,8 @@ type Role = "Frontend" | "Backend" | "UI/UX" | "AI/ML";
 const PostProjectPage = () => {
   const navigate = useNavigate();
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -119,20 +121,40 @@ const PostProjectPage = () => {
 
     setIsPosting(true);
 
-    /*
-      Later we will replace this with:
-
-      fetch(`${API_URL}/api/projects`, {
+    try {
+      const response = await fetch(`${API_URL}/api/projects`, {
         method: "POST",
-        ...
-      })
-    */
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          category: projectType,
+          skills,
+          teamSize,
+        }),
+      });
 
-    setTimeout(() => {
-      setIsPosting(false);
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Failed to post project.");
+        return;
+      }
+
       alert("Project posted successfully! 🚀");
       navigate("/dashboard");
-    }, 900);
+    } catch (error) {
+      console.error("Post project error:", error);
+
+      alert(
+        "Unable to connect to the server. Please try again."
+      );
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   return (
@@ -1442,3 +1464,4 @@ const SelectBox = ({
 };
 
 export default PostProjectPage;
+

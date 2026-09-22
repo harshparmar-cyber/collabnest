@@ -6,13 +6,11 @@ import {
   Home,
   MessageCircle,
   Mic,
-  Code,
   Phone,
   Plus,
   Rocket,
   Search,
   Settings,
-  Sparkles,
   Star,
   Users,
   Zap,
@@ -143,6 +141,22 @@ type ProjectCardProps = {
   tags: string[];
 };
 
+type Project = {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  skills: string[];
+  teamSize: string;
+  createdBy: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
 const ProjectCard = ({
   icon,
   iconClass,
@@ -235,6 +249,7 @@ const DashboardPage = () => {
   const navigate = useNavigate();
 
   const [userName, setUserName] = useState("User");
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -262,6 +277,27 @@ const DashboardPage = () => {
     };
 
     fetchCurrentUser();
+  }, [API_URL]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/projects`);
+
+        if (!response.ok) {
+          console.error("Failed to fetch projects.");
+          return;
+        }
+
+        const data = await response.json();
+
+        setProjects(data.projects || []);
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      }
+    };
+
+    fetchProjects();
   }, [API_URL]);
 
   return (
@@ -569,59 +605,60 @@ const DashboardPage = () => {
 
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                {projects.length > 0 ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {projects.map((project, index) => {
+                      const iconClasses = [
+                        "bg-purple-100 text-purple-600",
+                        "bg-emerald-100 text-emerald-600",
+                        "bg-blue-100 text-blue-600",
+                        "bg-orange-100 text-orange-600",
+                      ];
 
-                  <ProjectCard
-                    icon={<span className="text-[22px]">&lt;/&gt;</span>}
-                    iconClass="bg-purple-100 text-purple-600"
-                    title="AI Mock Interview Platform"
-                    description="Build an AI-powered mock interview platform using React, Node.js and Gemini API."
-                    tags={[
-                      "React",
-                      "Node.js",
-                      "Gemini",
-                      "AI",
-                    ]}
-                  />
+                      const iconSymbols = ["</>", "✦", "⌘", "⚡"];
 
-                  <ProjectCard
-                    icon={<Sparkles size={22} />}
-                    iconClass="bg-emerald-100 text-emerald-600"
-                    title="College Event Management App"
-                    description="A full-stack web app to manage college events, registrations and notifications."
-                    tags={[
-                      "React",
-                      "Firebase",
-                      "Tailwind",
-                      "MongoDB",
-                    ]}
-                  />
+                      return (
+                        <ProjectCard
+                          key={project._id}
+                          icon={
+                            <span className="text-[20px]">
+                              {iconSymbols[index % iconSymbols.length]}
+                            </span>
+                          }
+                          iconClass={
+                            iconClasses[index % iconClasses.length]
+                          }
+                          title={project.title}
+                          description={project.description}
+                          tags={project.skills}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-blue-200 bg-white p-8 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#1684ff]">
+                      <Plus size={22} />
+                    </div>
 
-                  <ProjectCard
-                    icon={<Code size={22} />}
-                    iconClass="bg-blue-100 text-blue-600"
-                    title="Student Expense Tracker"
-                    description="A simple application for students to manage expenses and understand their spending habits."
-                    tags={[
-                      "React",
-                      "Node.js",
-                      "MongoDB",
-                    ]}
-                  />
+                    <h3 className="mt-4 text-[15px] font-bold text-[#123d78]">
+                      No projects posted yet
+                    </h3>
 
-                  <ProjectCard
-                    icon={<Zap size={22} />}
-                    iconClass="bg-orange-100 text-orange-600"
-                    title="Smart Campus Assistant"
-                    description="An intelligent campus assistant that helps students find information and services."
-                    tags={[
-                      "AI",
-                      "React",
-                      "Python",
-                    ]}
-                  />
+                    <p className="mx-auto mt-2 max-w-[360px] text-[11px] leading-5 text-gray-500">
+                      Be the first to share a project idea and find
+                      collaborators.
+                    </p>
 
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/post-project")}
+                      className="mt-4 rounded-xl bg-[#1684ff] px-5 py-2.5 text-[10px] font-bold text-white transition hover:bg-[#0874e8]"
+                    >
+                      Post a Project
+                    </button>
+                  </div>
+                )}
 
               </div>
 
