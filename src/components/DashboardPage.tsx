@@ -4,13 +4,13 @@ import {
   ChevronRight,
   FilePlus2,
   Home,
+  LogOut,
   MessageCircle,
   Mic,
   Phone,
   Plus,
   Pencil,
   Trash2,
-  Rocket,
   Search,
   Settings,
   Star,
@@ -467,80 +467,76 @@ const DashboardPage = () => {
       {/* =====================================================
           SIDEBAR
       ===================================================== */}
-      <aside className="fixed bottom-0 left-0 top-[70px] z-40 hidden w-[240px] flex-col bg-gradient-to-b from-[#073b88] to-[#062f70] text-white md:flex">
+      <aside className="
+  fixed
+  bottom-0
+  left-0
+  top-[70px]
+  z-40
+  hidden
+  w-[240px]
+  flex-col
+  overflow-y-auto
+  bg-gradient-to-b
+  from-[#073b88]
+  to-[#062f70]
+  text-white
+  md:flex
+">
+  <nav className="flex-1 px-3 py-5">
 
-        <nav className="flex-1 px-3 py-5">
+    <SidebarItem
+      icon={<Home size={20} />}
+      label="Dashboard"
+      active
+      onClick={() => navigate("/dashboard")}
+    />
 
-          <SidebarItem
-            icon={<Home size={20} />}
-            label="Dashboard"
-            active
-            onClick={() => navigate("/dashboard")}
-          />
+    <SidebarItem
+      icon={<BriefcaseBusiness size={20} />}
+      label="Explore Projects"
+    />
 
-          <SidebarItem
-            icon={<BriefcaseBusiness size={20} />}
-            label="Explore Projects"
-          />
+    <SidebarItem
+      icon={<Plus size={21} />}
+      label="Post a Project"
+      onClick={() => navigate("/post-project")}
+    />
 
-          <SidebarItem
-            icon={<Plus size={21} />}
-            label="Post a Project"
-            onClick={() => navigate("/post-project")}
-          />
+    <SidebarItem
+      icon={<Users size={20} />}
+      label="My Collaborations"
+    />
 
-          <SidebarItem
-            icon={<Users size={20} />}
-            label="My Collaborations"
-          />
+    <SidebarItem
+      icon={<MessageCircle size={20} />}
+      label="Messages"
+      badge="2"
+    />
 
-          <SidebarItem
-            icon={<MessageCircle size={20} />}
-            label="Messages"
-            badge="2"
-          />
+    <SidebarItem
+      icon={<Phone size={20} />}
+      label="Calls"
+    />
 
-          <SidebarItem
-            icon={<Phone size={20} />}
-            label="Calls"
-          />
+    <SidebarItem
+      icon={<Mic size={20} />}
+      label="Interview"
+    />
 
-          <SidebarItem
-            icon={<Mic size={20} />}
-            label="Interview"
-          />
+    <SidebarItem
+      icon={<Settings size={20} />}
+      label="Settings"
+    />
 
-          <SidebarItem
-            icon={<Settings size={20} />}
-            label="Settings"
-          />
+    {/* Logout */}
+    <SidebarItem
+      icon={<LogOut size={20} />}
+      label="Logout"
+    />
 
-        </nav>
-
-        {/* Sidebar CTA */}
-        <div className="mx-4 mb-5 rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm">
-
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff]">
-            <Rocket size={21} />
-          </div>
-
-          <h3 className="text-[14px] font-bold">
-            Build something amazing!
-          </h3>
-
-          <p className="mt-2 text-[11px] leading-5 text-blue-100/80">
-            Your next big project could start with a single message.
-          </p>
-
-          <button
-            type="button"
-            className="mt-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#1684ff] transition hover:scale-105"
-          >
-            <ChevronRight size={16} />
-          </button>
-
-        </div>
-      </aside>
+  </nav>
+</aside>
 
       {/* =====================================================
           MAIN CONTENT
