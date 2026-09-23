@@ -15,6 +15,7 @@ import {
   Settings,
   Star,
   Users,
+  X,
   Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -144,6 +145,7 @@ type ProjectCardProps = {
   isOwner?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  onView?: () => void;
   isDeleting?: boolean;
 };
 
@@ -172,6 +174,7 @@ const ProjectCard = ({
   isOwner = false,
   onEdit,
   onDelete,
+  onView,
   isDeleting = false,
 }: ProjectCardProps) => {
   return (
@@ -235,6 +238,7 @@ const ProjectCard = ({
         ) : (
           <button
             type="button"
+            onClick={onView}
             className="text-[10px] font-semibold text-[#1684ff] hover:underline"
           >
             View Project →
@@ -285,9 +289,14 @@ const DashboardPage = () => {
   const [userName, setUserName] = useState("User");
   const [currentUserId, setCurrentUserId] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
-    null
-  );
+  const [deletingProjectId, setDeletingProjectId] =
+    useState<string | null>(null);
+
+  const [selectedProject, setSelectedProject] =
+    useState<Project | null>(null);
+
+  const [isLoggingOut, setIsLoggingOut] =
+    useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -311,7 +320,10 @@ const DashboardPage = () => {
         setUserName(data.user.name);
         setCurrentUserId(data.user.id);
       } catch (error) {
-        console.error("Failed to fetch current user:", error);
+        console.error(
+          "Failed to fetch current user:",
+          error
+        );
       }
     };
 
@@ -321,7 +333,9 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/projects`);
+        const response = await fetch(
+          `${API_URL}/api/projects`
+        );
 
         if (!response.ok) {
           console.error("Failed to fetch projects.");
@@ -332,14 +346,19 @@ const DashboardPage = () => {
 
         setProjects(data.projects || []);
       } catch (error) {
-        console.error("Failed to fetch projects:", error);
+        console.error(
+          "Failed to fetch projects:",
+          error
+        );
       }
     };
 
     fetchProjects();
   }, [API_URL]);
 
-  const handleDeleteProject = async (projectId: string) => {
+  const handleDeleteProject = async (
+    projectId: string
+  ) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this project?"
     );
@@ -360,24 +379,36 @@ const DashboardPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "Failed to delete project.");
+        alert(
+          data.message || "Failed to delete project."
+        );
         return;
       }
 
       setProjects((currentProjects) =>
-        currentProjects.filter((project) => project._id !== projectId)
+        currentProjects.filter(
+          (project) => project._id !== projectId
+        )
       );
 
       alert("Project deleted successfully.");
     } catch (error) {
-      console.error("Delete project error:", error);
-      alert("Unable to connect to the server. Please try again.");
+      console.error(
+        "Delete project error:",
+        error
+      );
+
+      alert(
+        "Unable to connect to the server. Please try again."
+      );
     } finally {
       setDeletingProjectId(null);
     }
   };
 
-  const handleEditProject = (project: Project) => {
+  const handleEditProject = (
+    project: Project
+  ) => {
     navigate("/post-project", {
       state: {
         editMode: true,
@@ -386,8 +417,53 @@ const DashboardPage = () => {
     });
   };
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/auth/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(
+          () => null
+        );
+
+        alert(
+          data?.message ||
+            "Logout failed. Please try again."
+        );
+
+        return;
+      }
+
+      navigate("/login", {
+        replace: true,
+      });
+    } catch (error) {
+      console.error(
+        "Logout error:",
+        error
+      );
+
+      alert(
+        "Unable to connect to the server. Please try again."
+      );
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
+
       {/* =====================================================
           TOP NAVBAR
       ===================================================== */}
@@ -397,11 +473,17 @@ const DashboardPage = () => {
           {/* Logo */}
           <div className="flex w-[240px] shrink-0 items-center gap-3 px-7">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff] shadow-lg">
-              <Users size={23} strokeWidth={2.5} />
+              <Users
+                size={23}
+                strokeWidth={2.5}
+              />
             </div>
 
             <span className="text-[22px] font-bold tracking-[-0.8px]">
-              Collab<span className="text-[#74b9ff]">Nest</span>
+              Collab
+              <span className="text-[#74b9ff]">
+                Nest
+              </span>
             </span>
           </div>
 
@@ -447,7 +529,9 @@ const DashboardPage = () => {
               className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
-                {userName.charAt(0).toUpperCase()}
+                {userName
+                  .charAt(0)
+                  .toUpperCase()}
               </div>
 
               <span className="hidden text-[13px] font-semibold lg:block">
@@ -467,76 +551,88 @@ const DashboardPage = () => {
       {/* =====================================================
           SIDEBAR
       ===================================================== */}
-      <aside className="
-  fixed
-  bottom-0
-  left-0
-  top-[70px]
-  z-40
-  hidden
-  w-[240px]
-  flex-col
-  overflow-y-auto
-  bg-gradient-to-b
-  from-[#073b88]
-  to-[#062f70]
-  text-white
-  md:flex
-">
-  <nav className="flex-1 px-3 py-5">
+      <aside
+        className="
+          fixed
+          bottom-0
+          left-0
+          top-[70px]
+          z-40
+          hidden
+          w-[240px]
+          flex-col
+          overflow-y-auto
+          bg-gradient-to-b
+          from-[#073b88]
+          to-[#062f70]
+          text-white
+          md:flex
+        "
+      >
+        <nav className="flex-1 px-3 py-5">
 
-    <SidebarItem
-      icon={<Home size={20} />}
-      label="Dashboard"
-      active
-      onClick={() => navigate("/dashboard")}
-    />
+          <SidebarItem
+            icon={<Home size={20} />}
+            label="Dashboard"
+            active
+            onClick={() =>
+              navigate("/dashboard")
+            }
+          />
 
-    <SidebarItem
-      icon={<BriefcaseBusiness size={20} />}
-      label="Explore Projects"
-    />
+          <SidebarItem
+            icon={
+              <BriefcaseBusiness size={20} />
+            }
+            label="Explore Projects"
+          />
 
-    <SidebarItem
-      icon={<Plus size={21} />}
-      label="Post a Project"
-      onClick={() => navigate("/post-project")}
-    />
+          <SidebarItem
+            icon={<Plus size={21} />}
+            label="Post a Project"
+            onClick={() =>
+              navigate("/post-project")
+            }
+          />
 
-    <SidebarItem
-      icon={<Users size={20} />}
-      label="My Collaborations"
-    />
+          <SidebarItem
+            icon={<Users size={20} />}
+            label="My Collaborations"
+          />
 
-    <SidebarItem
-      icon={<MessageCircle size={20} />}
-      label="Messages"
-      badge="2"
-    />
+          <SidebarItem
+            icon={<MessageCircle size={20} />}
+            label="Messages"
+            badge="2"
+          />
 
-    <SidebarItem
-      icon={<Phone size={20} />}
-      label="Calls"
-    />
+          <SidebarItem
+            icon={<Phone size={20} />}
+            label="Calls"
+          />
 
-    <SidebarItem
-      icon={<Mic size={20} />}
-      label="Interview"
-    />
+          <SidebarItem
+            icon={<Mic size={20} />}
+            label="Interview"
+          />
 
-    <SidebarItem
-      icon={<Settings size={20} />}
-      label="Settings"
-    />
+          <SidebarItem
+            icon={<Settings size={20} />}
+            label="Settings"
+          />
 
-    {/* Logout */}
-    <SidebarItem
-      icon={<LogOut size={20} />}
-      label="Logout"
-    />
+          <SidebarItem
+            icon={<LogOut size={20} />}
+            label={
+              isLoggingOut
+                ? "Logging out..."
+                : "Logout"
+            }
+            onClick={handleLogout}
+          />
 
-  </nav>
-</aside>
+        </nav>
+      </aside>
 
       {/* =====================================================
           MAIN CONTENT
@@ -566,7 +662,8 @@ const DashboardPage = () => {
                 <div className="relative z-20 max-w-[540px]">
 
                   <h1 className="text-[30px] font-bold leading-tight tracking-[-1px] text-[#103b76] md:text-[34px]">
-                    Welcome back, {userName.split(" ")[0]}!{" "}
+                    Welcome back,{" "}
+                    {userName.split(" ")[0]}!{" "}
                     <span>👋</span>
                   </h1>
 
@@ -637,7 +734,9 @@ const DashboardPage = () => {
                   description="Share your idea and find like-minded collaborators."
                   iconClass="bg-blue-100 text-blue-600"
                   arrowClass="bg-blue-100 text-blue-600"
-                  onClick={() => navigate("/post-project")}
+                  onClick={() =>
+                    navigate("/post-project")
+                  }
                 />
 
                 <QuickActionCard
@@ -649,7 +748,9 @@ const DashboardPage = () => {
                 />
 
                 <QuickActionCard
-                  icon={<MessageCircle size={23} />}
+                  icon={
+                    <MessageCircle size={23} />
+                  }
                   title="Start a Conversation"
                   description="Chat, discuss and build together."
                   iconClass="bg-emerald-100 text-emerald-600"
@@ -666,6 +767,7 @@ const DashboardPage = () => {
                 <div className="mb-4 flex items-center justify-between">
 
                   <div className="flex items-center gap-3">
+
                     <Star
                       size={25}
                       fill="currentColor"
@@ -675,6 +777,7 @@ const DashboardPage = () => {
                     <h2 className="text-[21px] font-bold text-[#123d78]">
                       Featured Projects
                     </h2>
+
                   </div>
 
                   <button
@@ -689,40 +792,80 @@ const DashboardPage = () => {
 
                 {projects.length > 0 ? (
                   <div className="grid gap-4 lg:grid-cols-2">
-                    {projects.map((project, index) => {
-                      const iconClasses = [
-                        "bg-purple-100 text-purple-600",
-                        "bg-emerald-100 text-emerald-600",
-                        "bg-blue-100 text-blue-600",
-                        "bg-orange-100 text-orange-600",
-                      ];
 
-                      const iconSymbols = ["</>", "✦", "⌘", "⚡"];
+                    {projects.map(
+                      (project, index) => {
 
-                      return (
-                        <ProjectCard
-                          key={project._id}
-                          icon={
-                            <span className="text-[20px]">
-                              {iconSymbols[index % iconSymbols.length]}
-                            </span>
-                          }
-                          iconClass={
-                            iconClasses[index % iconClasses.length]
-                          }
-                          title={project.title}
-                          description={project.description}
-                          tags={project.skills}
-                          isOwner={currentUserId === project.createdBy?._id}
-                          onEdit={() => handleEditProject(project)}
-                          onDelete={() => handleDeleteProject(project._id)}
-                          isDeleting={deletingProjectId === project._id}
-                        />
-                      );
-                    })}
+                        const iconClasses = [
+                          "bg-purple-100 text-purple-600",
+                          "bg-emerald-100 text-emerald-600",
+                          "bg-blue-100 text-blue-600",
+                          "bg-orange-100 text-orange-600",
+                        ];
+
+                        const iconSymbols = [
+                          "</>",
+                          "✦",
+                          "⌘",
+                          "⚡",
+                        ];
+
+                        return (
+                          <ProjectCard
+                            key={project._id}
+                            icon={
+                              <span className="text-[20px]">
+                                {
+                                  iconSymbols[
+                                    index %
+                                      iconSymbols.length
+                                  ]
+                                }
+                              </span>
+                            }
+                            iconClass={
+                              iconClasses[
+                                index %
+                                  iconClasses.length
+                              ]
+                            }
+                            title={project.title}
+                            description={
+                              project.description
+                            }
+                            tags={project.skills}
+                            isOwner={
+                              currentUserId ===
+                              project.createdBy?._id
+                            }
+                            onEdit={() =>
+                              handleEditProject(
+                                project
+                              )
+                            }
+                            onDelete={() =>
+                              handleDeleteProject(
+                                project._id
+                              )
+                            }
+                            onView={() =>
+                              setSelectedProject(
+                                project
+                              )
+                            }
+                            isDeleting={
+                              deletingProjectId ===
+                              project._id
+                            }
+                          />
+                        );
+                      }
+                    )}
+
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-blue-200 bg-white p-8 text-center">
+
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#1684ff]">
                       <Plus size={22} />
                     </div>
@@ -738,11 +881,14 @@ const DashboardPage = () => {
 
                     <button
                       type="button"
-                      onClick={() => navigate("/post-project")}
+                      onClick={() =>
+                        navigate("/post-project")
+                      }
                       className="mt-4 rounded-xl bg-[#1684ff] px-5 py-2.5 text-[10px] font-bold text-white transition hover:bg-[#0874e8]"
                     >
                       Post a Project
                     </button>
+
                   </div>
                 )}
 
@@ -815,50 +961,54 @@ const DashboardPage = () => {
 
                 <div className="mt-5 space-y-5">
 
-                  {collaborators.map((person) => (
-                    <div
-                      key={person.name}
-                      className="flex items-center gap-3"
-                    >
+                  {collaborators.map(
+                    (person) => (
+                      <div
+                        key={person.name}
+                        className="flex items-center gap-3"
+                      >
 
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#70b9f5] to-[#277bc9] text-[10px] font-bold text-white">
-                        {person.initials}
-                      </div>
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#70b9f5] to-[#277bc9] text-[10px] font-bold text-white">
+                          {person.initials}
+                        </div>
 
-                      <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1">
 
-                        <h3 className="truncate text-[11px] font-bold text-[#123d78]">
-                          {person.name}
-                        </h3>
+                          <h3 className="truncate text-[11px] font-bold text-[#123d78]">
+                            {person.name}
+                          </h3>
 
-                        <p className="mt-0.5 truncate text-[9px] text-gray-400">
-                          {person.role}
-                        </p>
+                          <p className="mt-0.5 truncate text-[9px] text-gray-400">
+                            {person.role}
+                          </p>
 
-                        <div className="mt-1 flex gap-1">
+                          <div className="mt-1 flex gap-1">
 
-                          {person.skills.map((skill) => (
-                            <span
-                              key={skill}
-                              className="rounded-full bg-blue-50 px-2 py-0.5 text-[7px] font-semibold text-[#4d8dca]"
-                            >
-                              {skill}
-                            </span>
-                          ))}
+                            {person.skills.map(
+                              (skill) => (
+                                <span
+                                  key={skill}
+                                  className="rounded-full bg-blue-50 px-2 py-0.5 text-[7px] font-semibold text-[#4d8dca]"
+                                >
+                                  {skill}
+                                </span>
+                              )
+                            )}
+
+                          </div>
 
                         </div>
 
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-lg border border-blue-200 px-3 py-1.5 text-[9px] font-semibold text-[#1684ff] transition hover:bg-blue-50"
+                        >
+                          Connect
+                        </button>
+
                       </div>
-
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-lg border border-blue-200 px-3 py-1.5 text-[9px] font-semibold text-[#1684ff] transition hover:bg-blue-50"
-                      >
-                        Connect
-                      </button>
-
-                    </div>
-                  ))}
+                    )
+                  )}
 
                 </div>
 
@@ -872,6 +1022,7 @@ const DashboardPage = () => {
                 <div className="flex items-center justify-between">
 
                   <div className="flex items-center gap-2">
+
                     <Zap
                       size={19}
                       fill="currentColor"
@@ -881,6 +1032,7 @@ const DashboardPage = () => {
                     <h2 className="text-[17px] font-bold text-[#123d78]">
                       Recent Activity
                     </h2>
+
                   </div>
 
                   <button
@@ -895,7 +1047,11 @@ const DashboardPage = () => {
                 <div className="mt-5 space-y-4">
 
                   <ActivityItem
-                    icon={<MessageCircle size={15} />}
+                    icon={
+                      <MessageCircle
+                        size={15}
+                      />
+                    }
                     text="You received a new collaboration request."
                     time="10 min ago"
                   />
@@ -907,7 +1063,9 @@ const DashboardPage = () => {
                   />
 
                   <ActivityItem
-                    icon={<Star size={15} />}
+                    icon={
+                      <Star size={15} />
+                    }
                     text="Your project was featured."
                     time="3 hours ago"
                   />
@@ -923,6 +1081,284 @@ const DashboardPage = () => {
         </div>
 
       </main>
+
+      {/* =====================================================
+          VIEW PROJECT MODAL
+      ===================================================== */}
+      {selectedProject && (
+        <div
+          className="
+            fixed
+            inset-0
+            z-[100]
+            flex
+            items-center
+            justify-center
+            bg-[#062f70]/50
+            p-4
+            backdrop-blur-sm
+          "
+          onClick={() =>
+            setSelectedProject(null)
+          }
+        >
+          <div
+            className="
+              relative
+              max-h-[90vh]
+              w-full
+              max-w-[580px]
+              overflow-y-auto
+              rounded-3xl
+              border
+              border-blue-100
+              bg-white
+              p-6
+              shadow-2xl
+              md:p-7
+            "
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedProject(null)
+              }
+              className="
+                absolute
+                right-5
+                top-5
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-full
+                bg-gray-100
+                text-gray-500
+                transition
+                hover:bg-blue-50
+                hover:text-[#1684ff]
+              "
+            >
+              <X size={18} />
+            </button>
+
+            {/* Project header */}
+            <div className="pr-12">
+
+              <span
+                className="
+                  inline-flex
+                  rounded-full
+                  bg-blue-50
+                  px-3
+                  py-1
+                  text-[9px]
+                  font-semibold
+                  text-[#1684ff]
+                "
+              >
+                Project Details
+              </span>
+
+              <h2
+                className="
+                  mt-4
+                  break-words
+                  text-[24px]
+                  font-bold
+                  leading-tight
+                  text-[#123d78]
+                "
+              >
+                {selectedProject.title}
+              </h2>
+
+              <p className="mt-2 text-[11px] text-gray-400">
+                Posted by{" "}
+                <span className="font-semibold text-[#315f96]">
+                  {selectedProject.createdBy?.name ||
+                    "Unknown user"}
+                </span>
+              </p>
+
+            </div>
+
+            {/* Description */}
+            <div className="mt-6">
+
+              <h3
+                className="
+                  text-[12px]
+                  font-bold
+                  text-[#123d78]
+                "
+              >
+                About this project
+              </h3>
+
+              <p
+                className="
+                  mt-2
+                  rounded-xl
+                  bg-[#f5f9ff]
+                  p-4
+                  text-[12px]
+                  leading-6
+                  text-gray-600
+                "
+              >
+                {selectedProject.description}
+              </p>
+
+            </div>
+
+            {/* Project information */}
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+              <div
+                className="
+                  rounded-xl
+                  border
+                  border-blue-100
+                  bg-white
+                  p-4
+                "
+              >
+                <p className="text-[9px] font-semibold text-gray-400">
+                  Category
+                </p>
+
+                <p
+                  className="
+                    mt-1
+                    text-[11px]
+                    font-bold
+                    text-[#123d78]
+                  "
+                >
+                  {selectedProject.category}
+                </p>
+              </div>
+
+              <div
+                className="
+                  rounded-xl
+                  border
+                  border-blue-100
+                  bg-white
+                  p-4
+                "
+              >
+                <p className="text-[9px] font-semibold text-gray-400">
+                  Team Size
+                </p>
+
+                <p
+                  className="
+                    mt-1
+                    text-[11px]
+                    font-bold
+                    text-[#123d78]
+                  "
+                >
+                  {selectedProject.teamSize}
+                </p>
+              </div>
+
+            </div>
+
+            {/* Skills */}
+            <div className="mt-5">
+
+              <h3
+                className="
+                  text-[12px]
+                  font-bold
+                  text-[#123d78]
+                "
+              >
+                Required Skills
+              </h3>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+
+                {selectedProject.skills.length > 0 ? (
+                  selectedProject.skills.map(
+                    (skill) => (
+                      <span
+                        key={skill}
+                        className="
+                          rounded-full
+                          bg-blue-50
+                          px-3
+                          py-1.5
+                          text-[9px]
+                          font-semibold
+                          text-[#2580d8]
+                        "
+                      >
+                        {skill}
+                      </span>
+                    )
+                  )
+                ) : (
+                  <span className="text-[10px] text-gray-400">
+                    No specific skills listed.
+                  </span>
+                )}
+
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div
+              className="
+                mt-7
+                flex
+                items-center
+                justify-between
+                border-t
+                border-gray-100
+                pt-5
+              "
+            >
+
+              <span className="text-[9px] text-gray-400">
+                Posted recently
+              </span>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedProject(null)
+                }
+                className="
+                  rounded-xl
+                  bg-[#1684ff]
+                  px-6
+                  py-2.5
+                  text-[11px]
+                  font-bold
+                  text-white
+                  transition
+                  hover:bg-[#0874e8]
+                "
+              >
+                Close
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
@@ -947,6 +1383,7 @@ const ActivityItem = ({
       </div>
 
       <div>
+
         <p className="text-[10px] leading-4 text-gray-600">
           {text}
         </p>
@@ -954,6 +1391,7 @@ const ActivityItem = ({
         <span className="text-[8px] text-gray-400">
           {time}
         </span>
+
       </div>
 
     </div>
