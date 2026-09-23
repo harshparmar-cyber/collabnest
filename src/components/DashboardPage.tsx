@@ -8,6 +8,8 @@ import {
   Mic,
   Phone,
   Plus,
+  Pencil,
+  Trash2,
   Rocket,
   Search,
   Settings,
@@ -139,6 +141,10 @@ type ProjectCardProps = {
   title: string;
   description: string;
   tags: string[];
+  isOwner?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 };
 
 type Project = {
@@ -163,6 +169,10 @@ const ProjectCard = ({
   title,
   description,
   tags,
+  isOwner = false,
+  onEdit,
+  onDelete,
+  isDeleting = false,
 }: ProjectCardProps) => {
   return (
     <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
@@ -200,12 +210,36 @@ const ProjectCard = ({
           Posted recently
         </span>
 
-        <button
-          type="button"
-          className="text-[10px] font-semibold text-[#1684ff] hover:underline"
-        >
-          View Project →
-        </button>
+        {isOwner ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={isDeleting}
+              className="flex items-center gap-1.5 rounded-lg border border-blue-200 px-2.5 py-1.5 text-[9px] font-semibold text-[#1684ff] transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Pencil size={11} />
+              Edit
+            </button>
+
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeleting}
+              className="flex items-center gap-1.5 rounded-lg border border-red-200 px-2.5 py-1.5 text-[9px] font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 size={11} />
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="text-[10px] font-semibold text-[#1684ff] hover:underline"
+          >
+            View Project →
+          </button>
+        )}
       </div>
     </div>
   );
@@ -249,7 +283,11 @@ const DashboardPage = () => {
   const navigate = useNavigate();
 
   const [userName, setUserName] = useState("User");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
+    null
+  );
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -271,6 +309,7 @@ const DashboardPage = () => {
         const data = await response.json();
 
         setUserName(data.user.name);
+        setCurrentUserId(data.user.id);
       } catch (error) {
         console.error("Failed to fetch current user:", error);
       }
@@ -299,6 +338,53 @@ const DashboardPage = () => {
 
     fetchProjects();
   }, [API_URL]);
+
+  const handleDeleteProject = async (projectId: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project?"
+    );
+
+    if (!confirmed) return;
+
+    setDeletingProjectId(projectId);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/projects/${projectId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.message || "Failed to delete project.");
+        return;
+      }
+
+      setProjects((currentProjects) =>
+        currentProjects.filter((project) => project._id !== projectId)
+      );
+
+      alert("Project deleted successfully.");
+    } catch (error) {
+      console.error("Delete project error:", error);
+      alert("Unable to connect to the server. Please try again.");
+    } finally {
+      setDeletingProjectId(null);
+    }
+  };
+
+  const handleEditProject = (project: Project) => {
+    navigate("/post-project", {
+      state: {
+        editMode: true,
+        project,
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
@@ -631,6 +717,10 @@ const DashboardPage = () => {
                           title={project.title}
                           description={project.description}
                           tags={project.skills}
+                          isOwner={currentUserId === project.createdBy?._id}
+                          onEdit={() => handleEditProject(project)}
+                          onDelete={() => handleDeleteProject(project._id)}
+                          isDeleting={deletingProjectId === project._id}
                         />
                       );
                     })}

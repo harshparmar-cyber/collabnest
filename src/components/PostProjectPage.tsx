@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
+  Pencil,
   Check,
   ChevronDown,
   Code2,
@@ -19,10 +20,28 @@ import {
 
 type Role = "Frontend" | "Backend" | "UI/UX" | "AI/ML";
 
+type ProjectForEdit = {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  skills: string[];
+  teamSize: string;
+};
+
 const PostProjectPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const API_URL = import.meta.env.VITE_API_URL;
+
+  const editProject = location.state?.project as
+    | ProjectForEdit
+    | undefined;
+
+  const isEditMode = Boolean(
+    location.state?.editMode && editProject
+  );
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -44,6 +63,16 @@ const PostProjectPage = () => {
     useState<Role[]>(["Frontend", "UI/UX"]);
 
   const [isPosting, setIsPosting] = useState(false);
+
+  useEffect(() => {
+    if (!isEditMode || !editProject) return;
+
+    setTitle(editProject.title);
+    setDescription(editProject.description);
+    setSkills(editProject.skills || []);
+    setProjectType(editProject.category);
+    setTeamSize(editProject.teamSize);
+  }, [isEditMode, editProject]);
 
   const projectTitle = useMemo(() => {
     return title.trim() || "Your project title";
@@ -122,8 +151,14 @@ const PostProjectPage = () => {
     setIsPosting(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/projects`, {
-        method: "POST",
+      const url = isEditMode && editProject
+        ? `${API_URL}/api/projects/${editProject._id}`
+        : `${API_URL}/api/projects`;
+
+      const method = isEditMode ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -140,14 +175,27 @@ const PostProjectPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "Failed to post project.");
+        alert(
+          data.message ||
+            (isEditMode
+              ? "Failed to update project."
+              : "Failed to post project.")
+        );
         return;
       }
 
-      alert("Project posted successfully! 🚀");
+      alert(
+        isEditMode
+          ? "Project updated successfully! ✨"
+          : "Project posted successfully! 🚀"
+      );
+
       navigate("/dashboard");
     } catch (error) {
-      console.error("Post project error:", error);
+      console.error(
+        isEditMode ? "Update project error:" : "Post project error:",
+        error
+      );
 
       alert(
         "Unable to connect to the server. Please try again."
@@ -417,8 +465,8 @@ const PostProjectPage = () => {
                 text-blue-200
               "
             >
-              <Rocket size={13} />
-              Create a project
+              {isEditMode ? <Pencil size={13} /> : <Rocket size={13} />}
+              {isEditMode ? "Edit your project" : "Create a project"}
             </div>
 
             <h1
@@ -431,20 +479,24 @@ const PostProjectPage = () => {
                 md:text-[46px]
               "
             >
-              Bring your idea to{" "}
-              <span
-                className="
-                  bg-gradient-to-r
-                  from-[#54a9ff]
-                  via-[#8ac8ff]
-                  to-[#a78bfa]
-                  bg-clip-text
-                  text-transparent
-                "
-              >
-                life
-              </span>{" "}
-              🚀
+              {isEditMode ? "Update your project" : "Bring your idea to "}
+              {!isEditMode && (
+                <>
+                  <span
+                    className="
+                      bg-gradient-to-r
+                      from-[#54a9ff]
+                      via-[#8ac8ff]
+                      to-[#a78bfa]
+                      bg-clip-text
+                      text-transparent
+                    "
+                  >
+                    life
+                  </span>{" "}
+                </>
+              )}
+              {isEditMode ? " ✨" : "🚀"}
             </h1>
 
             <p
@@ -458,8 +510,9 @@ const PostProjectPage = () => {
                 md:text-[13px]
               "
             >
-              Share your idea and find students with the skills
-              and passion to build it with you.
+              {isEditMode
+                ? "Update your project details and keep your collaboration post fresh."
+                : "Share your idea and find students with the skills and passion to build it with you."}
             </p>
           </div>
 
@@ -1181,11 +1234,13 @@ const PostProjectPage = () => {
 
               <div>
                 <p className="text-[10px] font-semibold text-blue-50">
-                  Almost there!
+                  {isEditMode ? "Make your changes" : "Almost there!"}
                 </p>
 
                 <p className="text-[9px] text-blue-100/40">
-                  You can edit your project after posting.
+                  {isEditMode
+                    ? "Review your changes before saving."
+                    : "You can edit your project after posting."}
                 </p>
               </div>
             </div>
@@ -1255,10 +1310,16 @@ const PostProjectPage = () => {
                         border-t-white
                       "
                     />
-                    Posting...
+                    {isEditMode ? "Saving..." : "Posting..."}
                   </>
                 ) : (
                   <>
+                    {isEditMode ? (
+                      <Pencil
+                        size={14}
+                        className="transition-transform duration-200 group-hover:-translate-y-0.5"
+                      />
+                    ) : (
                     <Rocket
                       size={14}
                       className="
@@ -1268,7 +1329,8 @@ const PostProjectPage = () => {
                         group-hover:rotate-[-8deg]
                       "
                     />
-                    Post Project
+                    )}
+                    {isEditMode ? "Save Changes" : "Post Project"}
                     <ArrowRight size={13} />
                   </>
                 )}
@@ -1464,4 +1526,3 @@ const SelectBox = ({
 };
 
 export default PostProjectPage;
-
