@@ -13,6 +13,7 @@ import PhoneSection from "./components/PhoneSection";
 import AuthPage from "./components/AuthPage";
 import DashboardPage from "./components/DashboardPage";
 import PostProjectPage from "./components/PostProjectPage";
+import ExploreProjectsPage from "./components/ExploreProjectsPage";
 
 /* ========================================================= */
 /* LANDING PAGE */
@@ -281,7 +282,14 @@ function AnimatedRoutes() {
           path="/post-project"
           element={<PostProjectPage />}
         />
+
+        <Route
+  path="/explore-projects"
+  element={<ExploreProjectsPage />}
+/>
       </Routes>
+
+      
     </AnimatePresence>
   );
 }

@@ -15,7 +15,6 @@ import {
   Settings,
   Star,
   Users,
-  X,
   Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -289,16 +288,15 @@ const DashboardPage = () => {
   const [userName, setUserName] = useState("User");
   const [currentUserId, setCurrentUserId] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
-  const [deletingProjectId, setDeletingProjectId] =
-    useState<string | null>(null);
-
-  const [selectedProject, setSelectedProject] =
-    useState<Project | null>(null);
-
-  const [isLoggingOut, setIsLoggingOut] =
-    useState(false);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
+    null
+  );
 
   const API_URL = import.meta.env.VITE_API_URL;
+
+  // =====================================================
+  // FETCH CURRENT USER
+  // =====================================================
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -330,6 +328,10 @@ const DashboardPage = () => {
     fetchCurrentUser();
   }, [API_URL]);
 
+  // =====================================================
+  // FETCH ALL PROJECTS
+  // =====================================================
+
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -338,7 +340,9 @@ const DashboardPage = () => {
         );
 
         if (!response.ok) {
-          console.error("Failed to fetch projects.");
+          console.error(
+            "Failed to fetch projects."
+          );
           return;
         }
 
@@ -355,6 +359,10 @@ const DashboardPage = () => {
 
     fetchProjects();
   }, [API_URL]);
+
+  // =====================================================
+  // DELETE PROJECT
+  // =====================================================
 
   const handleDeleteProject = async (
     projectId: string
@@ -380,14 +388,16 @@ const DashboardPage = () => {
 
       if (!response.ok) {
         alert(
-          data.message || "Failed to delete project."
+          data.message ||
+            "Failed to delete project."
         );
         return;
       }
 
       setProjects((currentProjects) =>
         currentProjects.filter(
-          (project) => project._id !== projectId
+          (project) =>
+            project._id !== projectId
         )
       );
 
@@ -406,6 +416,10 @@ const DashboardPage = () => {
     }
   };
 
+  // =====================================================
+  // EDIT PROJECT
+  // =====================================================
+
   const handleEditProject = (
     project: Project
   ) => {
@@ -417,48 +431,19 @@ const DashboardPage = () => {
     });
   };
 
-  const handleLogout = async () => {
-    if (isLoggingOut) return;
+  // =====================================================
+  // VIEW PROJECT
+  // =====================================================
 
-    setIsLoggingOut(true);
-
-    try {
-      const response = await fetch(
-        `${API_URL}/api/auth/logout`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json().catch(
-          () => null
-        );
-
-        alert(
-          data?.message ||
-            "Logout failed. Please try again."
-        );
-
-        return;
-      }
-
-      navigate("/login", {
-        replace: true,
-      });
-    } catch (error) {
-      console.error(
-        "Logout error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the server. Please try again."
-      );
-    } finally {
-      setIsLoggingOut(false);
-    }
+  const handleViewProject = (
+    project: Project
+  ) => {
+    // We will use this later for the
+    // Project Details popup.
+    console.log(
+      "View project:",
+      project
+    );
   };
 
   return (
@@ -467,10 +452,12 @@ const DashboardPage = () => {
       {/* =====================================================
           TOP NAVBAR
       ===================================================== */}
+
       <header className="fixed left-0 right-0 top-0 z-50 h-[70px] bg-gradient-to-r from-[#073b88] to-[#0b4da5] text-white shadow-lg">
         <div className="flex h-full items-center">
 
           {/* Logo */}
+
           <div className="flex w-[240px] shrink-0 items-center gap-3 px-7">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff] shadow-lg">
               <Users
@@ -488,6 +475,7 @@ const DashboardPage = () => {
           </div>
 
           {/* Search */}
+
           <div className="flex flex-1 items-center justify-center px-5">
             <div className="flex h-[44px] w-full max-w-[580px] items-center gap-3 rounded-full bg-white/10 px-5 backdrop-blur-md">
               <Search
@@ -511,6 +499,7 @@ const DashboardPage = () => {
           </div>
 
           {/* Right side */}
+
           <div className="flex items-center gap-4 px-6">
 
             <button
@@ -551,6 +540,7 @@ const DashboardPage = () => {
       {/* =====================================================
           SIDEBAR
       ===================================================== */}
+
       <aside
         className="
           fixed
@@ -582,9 +572,14 @@ const DashboardPage = () => {
 
           <SidebarItem
             icon={
-              <BriefcaseBusiness size={20} />
+              <BriefcaseBusiness
+                size={20}
+              />
             }
             label="Explore Projects"
+            onClick={() =>
+              navigate("/explore-projects")
+            }
           />
 
           <SidebarItem
@@ -601,7 +596,9 @@ const DashboardPage = () => {
           />
 
           <SidebarItem
-            icon={<MessageCircle size={20} />}
+            icon={
+              <MessageCircle size={20} />
+            }
             label="Messages"
             badge="2"
           />
@@ -621,14 +618,11 @@ const DashboardPage = () => {
             label="Settings"
           />
 
+          {/* Logout */}
+
           <SidebarItem
             icon={<LogOut size={20} />}
-            label={
-              isLoggingOut
-                ? "Logging out..."
-                : "Logout"
-            }
-            onClick={handleLogout}
+            label="Logout"
           />
 
         </nav>
@@ -637,6 +631,7 @@ const DashboardPage = () => {
       {/* =====================================================
           MAIN CONTENT
       ===================================================== */}
+
       <main className="h-screen overflow-y-auto pt-[70px] md:ml-[240px]">
 
         <div className="mx-auto max-w-[1500px] p-5 md:p-7">
@@ -646,19 +641,23 @@ const DashboardPage = () => {
             {/* =================================================
                 LEFT CONTENT
             ================================================= */}
+
             <section>
 
               {/* =================================================
                   WELCOME BANNER
               ================================================= */}
+
               <div className="relative min-h-[270px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-[#eaf5ff] via-[#dceeff] to-[#c9e4ff] p-7 shadow-sm">
 
                 {/* Background shapes */}
+
                 <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/30" />
 
                 <div className="absolute bottom-[-90px] right-[35%] h-52 w-52 rounded-full bg-[#8cc6ff]/20" />
 
                 {/* Text content */}
+
                 <div className="relative z-20 max-w-[540px]">
 
                   <h1 className="text-[30px] font-bold leading-tight tracking-[-1px] text-[#103b76] md:text-[34px]">
@@ -668,11 +667,13 @@ const DashboardPage = () => {
                   </h1>
 
                   <p className="mt-3 max-w-[520px] text-[14px] leading-6 text-[#315f96]">
-                    Great to see you again! Find collaborators,
+                    Great to see you again!
+                    Find collaborators,
                     explore projects!
                   </p>
 
                   {/* Search */}
+
                   <div className="mt-6 flex h-[50px] w-full max-w-[520px] items-center gap-3 rounded-full bg-white px-4 shadow-md">
 
                     <Search
@@ -705,6 +706,7 @@ const DashboardPage = () => {
                 </div>
 
                 {/* STUDENTS IMAGE */}
+
                 <div className="pointer-events-none absolute bottom-0 right-[-5px] z-10 flex h-[245px] w-[52%] items-end justify-end">
 
                   <img
@@ -726,10 +728,15 @@ const DashboardPage = () => {
               {/* =================================================
                   QUICK ACTIONS
               ================================================= */}
+
               <div className="mt-6 grid gap-4 md:grid-cols-3">
 
+                {/* POST PROJECT */}
+
                 <QuickActionCard
-                  icon={<FilePlus2 size={23} />}
+                  icon={
+                    <FilePlus2 size={23} />
+                  }
                   title="Post a Project"
                   description="Share your idea and find like-minded collaborators."
                   iconClass="bg-blue-100 text-blue-600"
@@ -739,17 +746,30 @@ const DashboardPage = () => {
                   }
                 />
 
+                {/* FIND COLLABORATORS */}
+
                 <QuickActionCard
-                  icon={<Users size={23} />}
+                  icon={
+                    <Users size={23} />
+                  }
                   title="Find Collaborators"
                   description="Connect with students who share your interests."
                   iconClass="bg-purple-100 text-purple-600"
                   arrowClass="bg-purple-100 text-purple-600"
+                  onClick={() =>
+                    navigate(
+                      "/explore-projects"
+                    )
+                  }
                 />
+
+                {/* START CONVERSATION */}
 
                 <QuickActionCard
                   icon={
-                    <MessageCircle size={23} />
+                    <MessageCircle
+                      size={23}
+                    />
                   }
                   title="Start a Conversation"
                   description="Chat, discuss and build together."
@@ -762,6 +782,7 @@ const DashboardPage = () => {
               {/* =================================================
                   FEATURED PROJECTS
               ================================================= */}
+
               <div className="mt-8">
 
                 <div className="mb-4 flex items-center justify-between">
@@ -780,90 +801,121 @@ const DashboardPage = () => {
 
                   </div>
 
+                  {/* VIEW ALL */}
+
                   <button
                     type="button"
+                    onClick={() =>
+                      navigate(
+                        "/explore-projects"
+                      )
+                    }
                     className="flex items-center gap-1 text-[11px] font-semibold text-[#0878e8] hover:underline"
                   >
                     View All
-                    <ChevronRight size={14} />
+                    <ChevronRight
+                      size={14}
+                    />
                   </button>
 
                 </div>
 
+                {/* =================================================
+                    ONLY FIRST 4 PROJECTS
+                ================================================= */}
+
                 {projects.length > 0 ? (
                   <div className="grid gap-4 lg:grid-cols-2">
 
-                    {projects.map(
-                      (project, index) => {
+                    {projects
+                      .slice(0, 4)
+                      .map(
+                        (
+                          project,
+                          index
+                        ) => {
 
-                        const iconClasses = [
-                          "bg-purple-100 text-purple-600",
-                          "bg-emerald-100 text-emerald-600",
-                          "bg-blue-100 text-blue-600",
-                          "bg-orange-100 text-orange-600",
-                        ];
+                          const iconClasses = [
+                            "bg-purple-100 text-purple-600",
+                            "bg-emerald-100 text-emerald-600",
+                            "bg-blue-100 text-blue-600",
+                            "bg-orange-100 text-orange-600",
+                          ];
 
-                        const iconSymbols = [
-                          "</>",
-                          "✦",
-                          "⌘",
-                          "⚡",
-                        ];
+                          const iconSymbols = [
+                            "</>",
+                            "✦",
+                            "⌘",
+                            "⚡",
+                          ];
 
-                        return (
-                          <ProjectCard
-                            key={project._id}
-                            icon={
-                              <span className="text-[20px]">
-                                {
-                                  iconSymbols[
-                                    index %
-                                      iconSymbols.length
-                                  ]
-                                }
-                              </span>
-                            }
-                            iconClass={
-                              iconClasses[
-                                index %
-                                  iconClasses.length
-                              ]
-                            }
-                            title={project.title}
-                            description={
-                              project.description
-                            }
-                            tags={project.skills}
-                            isOwner={
-                              currentUserId ===
-                              project.createdBy?._id
-                            }
-                            onEdit={() =>
-                              handleEditProject(
-                                project
-                              )
-                            }
-                            onDelete={() =>
-                              handleDeleteProject(
+                          return (
+                            <ProjectCard
+                              key={
                                 project._id
-                              )
-                            }
-                            onView={() =>
-                              setSelectedProject(
+                              }
+                              icon={
+                                <span className="text-[20px]">
+                                  {
+                                    iconSymbols[
+                                      index %
+                                        iconSymbols.length
+                                    ]
+                                  }
+                                </span>
+                              }
+                              iconClass={
+                                iconClasses[
+                                  index %
+                                    iconClasses.length
+                                ]
+                              }
+                              title={
+                                project.title
+                              }
+                              description={
+                                project.description
+                              }
+                              tags={
+                                project.skills
+                              }
+                              isOwner={
+                                currentUserId ===
                                 project
-                              )
-                            }
-                            isDeleting={
-                              deletingProjectId ===
-                              project._id
-                            }
-                          />
-                        );
-                      }
-                    )}
+                                  .createdBy
+                                  ?._id
+                              }
+                              onEdit={() =>
+                                handleEditProject(
+                                  project
+                                )
+                              }
+                              onDelete={() =>
+                                handleDeleteProject(
+                                  project._id
+                                )
+                              }
+                              onView={() =>
+                                handleViewProject(
+                                  project
+                                )
+                              }
+                              isDeleting={
+                                deletingProjectId ===
+                                project._id
+                              }
+                            />
+                          );
+                        }
+                      )}
 
                   </div>
                 ) : (
+
+                  /* =================================================
+                     NO PROJECTS
+                  ================================================= */
+
                   <div className="rounded-2xl border border-dashed border-blue-200 bg-white p-8 text-center">
 
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#1684ff]">
@@ -875,18 +927,45 @@ const DashboardPage = () => {
                     </h3>
 
                     <p className="mx-auto mt-2 max-w-[360px] text-[11px] leading-5 text-gray-500">
-                      Be the first to share a project idea and find
-                      collaborators.
+                      Be the first to share
+                      a project idea and
+                      find collaborators.
                     </p>
 
                     <button
                       type="button"
                       onClick={() =>
-                        navigate("/post-project")
+                        navigate(
+                          "/post-project"
+                        )
                       }
                       className="mt-4 rounded-xl bg-[#1684ff] px-5 py-2.5 text-[10px] font-bold text-white transition hover:bg-[#0874e8]"
                     >
                       Post a Project
+                    </button>
+
+                  </div>
+                )}
+
+                {/* =================================================
+                    VIEW ALL PROJECTS MESSAGE
+                ================================================= */}
+
+                {projects.length > 4 && (
+                  <div className="mt-4 flex justify-center">
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          "/explore-projects"
+                        )
+                      }
+                      className="rounded-xl border border-blue-200 bg-white px-5 py-2.5 text-[10px] font-bold text-[#1684ff] transition hover:bg-blue-50"
+                    >
+                      View all{" "}
+                      {projects.length}{" "}
+                      projects →
                     </button>
 
                   </div>
@@ -899,11 +978,13 @@ const DashboardPage = () => {
             {/* =================================================
                 RIGHT SIDEBAR
             ================================================= */}
+
             <aside className="space-y-5">
 
               {/* =================================================
                   PROFILE COMPLETION
               ================================================= */}
+
               <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
 
                 <h2 className="text-[17px] font-bold text-[#123d78]">
@@ -913,9 +994,10 @@ const DashboardPage = () => {
                 <div className="mt-5 flex items-center gap-5">
 
                   {/* Progress circle */}
+
                   <div className="relative flex h-[92px] w-[92px] shrink-0 items-center justify-center rounded-full border-[9px] border-blue-100">
 
-                    <div className="absolute inset-[-9px] rounded-full border-[9px] border-transparent border-l-[#1684ff] border-t-[#1684ff] border-r-[#1684ff] rotate-[25deg]" />
+                    <div className="absolute inset-[-9px] rotate-[25deg] rounded-full border-[9px] border-transparent border-l-[#1684ff] border-t-[#1684ff] border-r-[#1684ff]" />
 
                     <span className="text-[17px] font-bold text-[#123d78]">
                       70%
@@ -924,7 +1006,9 @@ const DashboardPage = () => {
                   </div>
 
                   <p className="text-[11px] leading-5 text-gray-500">
-                    Complete your profile to get better matches and opportunities.
+                    Complete your profile
+                    to get better matches
+                    and opportunities.
                   </p>
 
                 </div>
@@ -934,7 +1018,9 @@ const DashboardPage = () => {
                   className="mt-5 flex h-[45px] w-full items-center justify-center gap-2 rounded-xl bg-[#1684ff] text-[12px] font-bold text-white transition hover:bg-[#0874e8]"
                 >
                   Complete Profile
-                  <ChevronRight size={16} />
+                  <ChevronRight
+                    size={16}
+                  />
                 </button>
 
               </div>
@@ -942,12 +1028,14 @@ const DashboardPage = () => {
               {/* =================================================
                   SUGGESTED COLLABORATORS
               ================================================= */}
+
               <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
 
                 <div className="flex items-center justify-between">
 
                   <h2 className="text-[17px] font-bold text-[#123d78]">
-                    Suggested Collaborators
+                    Suggested
+                    Collaborators
                   </h2>
 
                   <button
@@ -964,22 +1052,30 @@ const DashboardPage = () => {
                   {collaborators.map(
                     (person) => (
                       <div
-                        key={person.name}
+                        key={
+                          person.name
+                        }
                         className="flex items-center gap-3"
                       >
 
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#70b9f5] to-[#277bc9] text-[10px] font-bold text-white">
-                          {person.initials}
+                          {
+                            person.initials
+                          }
                         </div>
 
                         <div className="min-w-0 flex-1">
 
                           <h3 className="truncate text-[11px] font-bold text-[#123d78]">
-                            {person.name}
+                            {
+                              person.name
+                            }
                           </h3>
 
                           <p className="mt-0.5 truncate text-[9px] text-gray-400">
-                            {person.role}
+                            {
+                              person.role
+                            }
                           </p>
 
                           <div className="mt-1 flex gap-1">
@@ -987,10 +1083,14 @@ const DashboardPage = () => {
                             {person.skills.map(
                               (skill) => (
                                 <span
-                                  key={skill}
+                                  key={
+                                    skill
+                                  }
                                   className="rounded-full bg-blue-50 px-2 py-0.5 text-[7px] font-semibold text-[#4d8dca]"
                                 >
-                                  {skill}
+                                  {
+                                    skill
+                                  }
                                 </span>
                               )
                             )}
@@ -1017,6 +1117,7 @@ const DashboardPage = () => {
               {/* =================================================
                   RECENT ACTIVITY
               ================================================= */}
+
               <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
 
                 <div className="flex items-center justify-between">
@@ -1057,7 +1158,9 @@ const DashboardPage = () => {
                   />
 
                   <ActivityItem
-                    icon={<Users size={15} />}
+                    icon={
+                      <Users size={15} />
+                    }
                     text="Someone viewed your project."
                     time="1 hour ago"
                   />
@@ -1081,284 +1184,6 @@ const DashboardPage = () => {
         </div>
 
       </main>
-
-      {/* =====================================================
-          VIEW PROJECT MODAL
-      ===================================================== */}
-      {selectedProject && (
-        <div
-          className="
-            fixed
-            inset-0
-            z-[100]
-            flex
-            items-center
-            justify-center
-            bg-[#062f70]/50
-            p-4
-            backdrop-blur-sm
-          "
-          onClick={() =>
-            setSelectedProject(null)
-          }
-        >
-          <div
-            className="
-              relative
-              max-h-[90vh]
-              w-full
-              max-w-[580px]
-              overflow-y-auto
-              rounded-3xl
-              border
-              border-blue-100
-              bg-white
-              p-6
-              shadow-2xl
-              md:p-7
-            "
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-
-            {/* Close button */}
-            <button
-              type="button"
-              onClick={() =>
-                setSelectedProject(null)
-              }
-              className="
-                absolute
-                right-5
-                top-5
-                flex
-                h-9
-                w-9
-                items-center
-                justify-center
-                rounded-full
-                bg-gray-100
-                text-gray-500
-                transition
-                hover:bg-blue-50
-                hover:text-[#1684ff]
-              "
-            >
-              <X size={18} />
-            </button>
-
-            {/* Project header */}
-            <div className="pr-12">
-
-              <span
-                className="
-                  inline-flex
-                  rounded-full
-                  bg-blue-50
-                  px-3
-                  py-1
-                  text-[9px]
-                  font-semibold
-                  text-[#1684ff]
-                "
-              >
-                Project Details
-              </span>
-
-              <h2
-                className="
-                  mt-4
-                  break-words
-                  text-[24px]
-                  font-bold
-                  leading-tight
-                  text-[#123d78]
-                "
-              >
-                {selectedProject.title}
-              </h2>
-
-              <p className="mt-2 text-[11px] text-gray-400">
-                Posted by{" "}
-                <span className="font-semibold text-[#315f96]">
-                  {selectedProject.createdBy?.name ||
-                    "Unknown user"}
-                </span>
-              </p>
-
-            </div>
-
-            {/* Description */}
-            <div className="mt-6">
-
-              <h3
-                className="
-                  text-[12px]
-                  font-bold
-                  text-[#123d78]
-                "
-              >
-                About this project
-              </h3>
-
-              <p
-                className="
-                  mt-2
-                  rounded-xl
-                  bg-[#f5f9ff]
-                  p-4
-                  text-[12px]
-                  leading-6
-                  text-gray-600
-                "
-              >
-                {selectedProject.description}
-              </p>
-
-            </div>
-
-            {/* Project information */}
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-
-              <div
-                className="
-                  rounded-xl
-                  border
-                  border-blue-100
-                  bg-white
-                  p-4
-                "
-              >
-                <p className="text-[9px] font-semibold text-gray-400">
-                  Category
-                </p>
-
-                <p
-                  className="
-                    mt-1
-                    text-[11px]
-                    font-bold
-                    text-[#123d78]
-                  "
-                >
-                  {selectedProject.category}
-                </p>
-              </div>
-
-              <div
-                className="
-                  rounded-xl
-                  border
-                  border-blue-100
-                  bg-white
-                  p-4
-                "
-              >
-                <p className="text-[9px] font-semibold text-gray-400">
-                  Team Size
-                </p>
-
-                <p
-                  className="
-                    mt-1
-                    text-[11px]
-                    font-bold
-                    text-[#123d78]
-                  "
-                >
-                  {selectedProject.teamSize}
-                </p>
-              </div>
-
-            </div>
-
-            {/* Skills */}
-            <div className="mt-5">
-
-              <h3
-                className="
-                  text-[12px]
-                  font-bold
-                  text-[#123d78]
-                "
-              >
-                Required Skills
-              </h3>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-
-                {selectedProject.skills.length > 0 ? (
-                  selectedProject.skills.map(
-                    (skill) => (
-                      <span
-                        key={skill}
-                        className="
-                          rounded-full
-                          bg-blue-50
-                          px-3
-                          py-1.5
-                          text-[9px]
-                          font-semibold
-                          text-[#2580d8]
-                        "
-                      >
-                        {skill}
-                      </span>
-                    )
-                  )
-                ) : (
-                  <span className="text-[10px] text-gray-400">
-                    No specific skills listed.
-                  </span>
-                )}
-
-              </div>
-
-            </div>
-
-            {/* Footer */}
-            <div
-              className="
-                mt-7
-                flex
-                items-center
-                justify-between
-                border-t
-                border-gray-100
-                pt-5
-              "
-            >
-
-              <span className="text-[9px] text-gray-400">
-                Posted recently
-              </span>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectedProject(null)
-                }
-                className="
-                  rounded-xl
-                  bg-[#1684ff]
-                  px-6
-                  py-2.5
-                  text-[11px]
-                  font-bold
-                  text-white
-                  transition
-                  hover:bg-[#0874e8]
-                "
-              >
-                Close
-              </button>
-
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );
