@@ -1038,7 +1038,7 @@ const ExploreProjectsPage = () => {
                   md:text-[48px]
                 "
               >
-                Find Collaborators
+                Find Projects!
               </h1>
 
               <p
