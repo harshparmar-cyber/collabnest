@@ -1,5 +1,4 @@
 import {
-  Bell,
   BriefcaseBusiness,
   ChevronRight,
   Home,
@@ -10,11 +9,29 @@ import {
   Plus,
   Search,
   Settings,
+  SlidersHorizontal,
   Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+type ProjectOwner = {
+  _id: string;
+  name: string;
+  email: string;
+};
+
+type Project = {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  skills: string[];
+  teamSize: string;
+  createdBy: ProjectOwner;
+  createdAt: string;
+};
 
 type SidebarItemProps = {
   icon: React.ReactNode;
@@ -38,19 +55,19 @@ const SidebarItem = ({
       className={`
         mb-2
         flex
-        h-[54px]
         w-full
         items-center
         gap-4
         rounded-xl
         px-5
+        py-3.5
         text-left
         transition
         duration-200
         ${
           active
             ? "bg-white/15 text-white shadow-sm"
-            : "text-blue-100 hover:bg-white/10 hover:text-white"
+            : "text-white/85 hover:bg-white/10 hover:text-white"
         }
       `}
     >
@@ -69,57 +86,22 @@ const SidebarItem = ({
   );
 };
 
-type Project = {
-  _id: string;
-  title: string;
-  description: string;
-  category: string;
-  skills: string[];
-  teamSize: string;
-  createdBy: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-};
-
 type ProjectCardProps = {
   project: Project;
   onView: () => void;
-  index: number;
 };
 
 const ProjectCard = ({
   project,
   onView,
-  index,
 }: ProjectCardProps) => {
-  const iconClasses = [
-    "bg-purple-100 text-purple-600",
-    "bg-emerald-100 text-emerald-600",
-    "bg-blue-100 text-blue-600",
-    "bg-orange-100 text-orange-600",
-  ];
-
-  const iconSymbols = [
-    "</>",
-    "✦",
-    "⌘",
-    "⚡",
-  ];
-
-  const iconClass =
-    iconClasses[index % iconClasses.length];
-
-  const iconSymbol =
-    iconSymbols[index % iconSymbols.length];
-
   return (
     <div
       className="
         group
+        flex
+        min-h-[245px]
+        flex-col
         rounded-2xl
         border
         border-blue-100
@@ -129,126 +111,166 @@ const ProjectCard = ({
         transition
         duration-200
         hover:-translate-y-1
+        hover:border-blue-200
         hover:shadow-lg
       "
     >
       {/* TOP */}
 
-      <div className="flex gap-4">
-
-        <div
-          className={`
-            flex
-            h-14
-            w-14
-            shrink-0
-            items-center
-            justify-center
-            rounded-xl
-            ${iconClass}
-          `}
-        >
-          <span className="text-[21px] font-semibold">
-            {iconSymbol}
-          </span>
-        </div>
-
-        <div className="min-w-0 flex-1">
-
-          <div className="flex items-start justify-between gap-3">
-
-            <div className="min-w-0">
-
-              <h3 className="truncate text-[16px] font-bold text-[#123d78]">
-                {project.title}
-              </h3>
-
-              <p className="mt-1 text-[10px] text-gray-400">
-                Posted by{" "}
-                <span className="font-semibold text-[#4d79a8]">
-                  {project.createdBy?.name ||
-                    "Unknown user"}
-                </span>
-              </p>
-
-            </div>
-
-            <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[8px] font-semibold text-[#2580d8]">
-              {project.category}
-            </span>
-
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="
+              flex
+              h-11
+              w-11
+              shrink-0
+              items-center
+              justify-center
+              rounded-xl
+              bg-blue-100
+              text-[#1684ff]
+            "
+          >
+            <BriefcaseBusiness size={21} />
           </div>
 
+          <div>
+            <span
+              className="
+                inline-flex
+                rounded-full
+                bg-blue-50
+                px-2.5
+                py-1
+                text-[9px]
+                font-bold
+                uppercase
+                tracking-wide
+                text-[#1684ff]
+              "
+            >
+              {project.category}
+            </span>
+          </div>
         </div>
-
       </div>
+
+      {/* TITLE */}
+
+      <h3
+        className="
+          mt-5
+          line-clamp-2
+          text-[17px]
+          font-bold
+          leading-6
+          text-[#123d78]
+        "
+      >
+        {project.title}
+      </h3>
 
       {/* DESCRIPTION */}
 
-      <p className="mt-4 line-clamp-3 text-[11px] leading-5 text-gray-500">
+      <p
+        className="
+          mt-2
+          line-clamp-3
+          text-[11px]
+          leading-5
+          text-gray-500
+        "
+      >
         {project.description}
       </p>
 
       {/* SKILLS */}
 
       <div className="mt-4 flex flex-wrap gap-1.5">
-
-        {project.skills.map((skill) => (
+        {project.skills.slice(0, 4).map((skill) => (
           <span
             key={skill}
             className="
-              rounded-full
-              bg-blue-50
+              rounded-lg
+              bg-[#f0f6ff]
               px-2.5
-              py-1
+              py-1.5
               text-[9px]
               font-semibold
-              text-[#2580d8]
+              text-[#2367a8]
             "
           >
             {skill}
           </span>
         ))}
 
+        {project.skills.length > 4 && (
+          <span
+            className="
+              rounded-lg
+              bg-gray-100
+              px-2.5
+              py-1.5
+              text-[9px]
+              font-semibold
+              text-gray-500
+            "
+          >
+            +{project.skills.length - 4}
+          </span>
+        )}
       </div>
 
       {/* BOTTOM */}
 
-      <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
+      <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+        <div>
+          <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">
+            Posted by
+          </p>
 
-        <div className="flex items-center gap-2 text-[9px] text-gray-400">
-
-          <Users size={13} />
-
-          <span>
-            {project.teamSize}
-          </span>
-
+          <p className="mt-1 max-w-[150px] truncate text-[11px] font-bold text-[#123d78]">
+            {project.createdBy?.name || "Student"}
+          </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onView}
-          className="
-            flex
-            items-center
-            gap-1.5
-            rounded-lg
-            bg-[#1684ff]
-            px-3.5
-            py-2
-            text-[9px]
-            font-bold
-            text-white
-            transition
-            hover:bg-[#0874e8]
-          "
-        >
-          View Project
-          <ChevronRight size={13} />
-        </button>
+        <div className="text-right">
+          <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">
+            Team size
+          </p>
 
+          <p className="mt-1 text-[11px] font-bold text-[#123d78]">
+            {project.teamSize}
+          </p>
+        </div>
       </div>
+
+      {/* VIEW BUTTON */}
+
+      <button
+        type="button"
+        onClick={onView}
+        className="
+          mt-4
+          flex
+          w-full
+          items-center
+          justify-center
+          gap-1.5
+          rounded-xl
+          bg-[#1684ff]
+          py-2.5
+          text-[10px]
+          font-bold
+          text-white
+          transition
+          hover:bg-[#0874e8]
+        "
+      >
+        View Project
+        <ChevronRight size={13} />
+      </button>
     </div>
   );
 };
@@ -271,7 +293,7 @@ const ProjectDetailsModal = ({
         flex
         items-center
         justify-center
-        bg-[#05285c]/60
+        bg-[#062f70]/40
         p-4
         backdrop-blur-sm
       "
@@ -279,229 +301,253 @@ const ProjectDetailsModal = ({
     >
       <div
         className="
-          relative
           max-h-[90vh]
           w-full
-          max-w-[620px]
+          max-w-[650px]
           overflow-y-auto
           rounded-3xl
           bg-white
-          p-6
           shadow-2xl
-          md:p-8
         "
-        onClick={(event) =>
-          event.stopPropagation()
-        }
+        onClick={(event) => event.stopPropagation()}
       >
+        {/* HEADER */}
 
-        {/* CLOSE */}
-
-        <button
-          type="button"
-          onClick={onClose}
+        <div
           className="
-            absolute
-            right-5
-            top-5
-            flex
-            h-9
-            w-9
-            items-center
-            justify-center
-            rounded-full
-            bg-gray-100
-            text-gray-500
-            transition
-            hover:bg-gray-200
-            hover:text-gray-700
+            relative
+            overflow-hidden
+            rounded-t-3xl
+            bg-gradient-to-br
+            from-[#073b88]
+            to-[#1684ff]
+            p-7
+            text-white
           "
         >
-          <X size={18} />
-        </button>
+          <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10" />
 
-        {/* ICON */}
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="
+                  flex
+                  h-12
+                  w-12
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-white/15
+                "
+              >
+                <BriefcaseBusiness size={24} />
+              </div>
 
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-[#1684ff]">
-          <BriefcaseBusiness size={25} />
+              <div>
+                <span
+                  className="
+                    rounded-full
+                    bg-white/15
+                    px-3
+                    py-1
+                    text-[9px]
+                    font-bold
+                    uppercase
+                  "
+                >
+                  {project.category}
+                </span>
+
+                <h2 className="mt-2 text-[22px] font-bold leading-7">
+                  {project.title}
+                </h2>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="
+                flex
+                h-9
+                w-9
+                shrink-0
+                items-center
+                justify-center
+                rounded-full
+                bg-white/10
+                transition
+                hover:bg-white/20
+              "
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* TITLE */}
+        {/* BODY */}
 
-        <div className="mt-5 pr-10">
+        <div className="p-7">
+          {/* OWNER */}
 
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-[9px] font-bold text-[#1684ff]">
-            {project.category}
-          </span>
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+              rounded-2xl
+              border
+              border-blue-100
+              bg-[#f7fbff]
+              p-4
+            "
+          >
+            <div
+              className="
+                flex
+                h-11
+                w-11
+                items-center
+                justify-center
+                rounded-full
+                bg-gradient-to-br
+                from-[#7cc4ff]
+                to-[#2378d8]
+                text-sm
+                font-bold
+                text-white
+              "
+            >
+              {project.createdBy?.name
+                ?.charAt(0)
+                .toUpperCase() || "S"}
+            </div>
 
-          <h2 className="mt-3 text-[25px] font-bold tracking-[-0.5px] text-[#123d78]">
-            {project.title}
-          </h2>
+            <div>
+              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">
+                Posted by
+              </p>
 
-          <p className="mt-2 text-[11px] text-gray-400">
-            Posted by{" "}
-            <span className="font-semibold text-[#3c6d9f]">
-              {project.createdBy?.name ||
-                "Unknown user"}
-            </span>
-          </p>
+              <p className="mt-0.5 text-[13px] font-bold text-[#123d78]">
+                {project.createdBy?.name || "Student"}
+              </p>
 
-        </div>
-
-        {/* DESCRIPTION */}
-
-        <div className="mt-7">
-
-          <h3 className="text-[13px] font-bold text-[#123d78]">
-            About this project
-          </h3>
-
-          <p className="mt-2 text-[12px] leading-6 text-gray-600">
-            {project.description}
-          </p>
-
-        </div>
-
-        {/* DETAILS */}
-
-        <div className="mt-7 grid gap-4 sm:grid-cols-2">
-
-          <div className="rounded-2xl bg-[#f5f9ff] p-4">
-
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
-              Category
-            </p>
-
-            <p className="mt-1 text-[12px] font-bold text-[#123d78]">
-              {project.category}
-            </p>
-
+              <p className="text-[10px] text-gray-500">
+                {project.createdBy?.email || ""}
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-2xl bg-[#f5f9ff] p-4">
+          {/* DESCRIPTION */}
 
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
-              Team Size
+          <div className="mt-6">
+            <h3 className="text-[14px] font-bold text-[#123d78]">
+              About this project
+            </h3>
+
+            <p className="mt-2 text-[11px] leading-6 text-gray-600">
+              {project.description}
             </p>
-
-            <p className="mt-1 text-[12px] font-bold text-[#123d78]">
-              {project.teamSize}
-            </p>
-
           </div>
 
-        </div>
+          {/* INFO */}
 
-        {/* SKILLS */}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-blue-50 p-4">
+              <p className="text-[9px] font-bold uppercase tracking-wide text-blue-400">
+                Category
+              </p>
 
-        <div className="mt-7">
+              <p className="mt-1.5 text-[12px] font-bold text-[#123d78]">
+                {project.category}
+              </p>
+            </div>
 
-          <h3 className="text-[13px] font-bold text-[#123d78]">
-            Skills needed
-          </h3>
+            <div className="rounded-2xl bg-blue-50 p-4">
+              <p className="text-[9px] font-bold uppercase tracking-wide text-blue-400">
+                Team Size
+              </p>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+              <p className="mt-1.5 text-[12px] font-bold text-[#123d78]">
+                {project.teamSize}
+              </p>
+            </div>
+          </div>
 
-            {project.skills.map(
-              (skill) => (
+          {/* SKILLS */}
+
+          <div className="mt-6">
+            <h3 className="text-[14px] font-bold text-[#123d78]">
+              Required Skills
+            </h3>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {project.skills.map((skill) => (
                 <span
                   key={skill}
                   className="
-                    rounded-full
+                    rounded-xl
+                    border
+                    border-blue-100
                     bg-blue-50
                     px-3
-                    py-1.5
+                    py-2
                     text-[10px]
                     font-semibold
-                    text-[#2580d8]
+                    text-[#2367a8]
                   "
                 >
                   {skill}
                 </span>
-              )
-            )}
-
+              ))}
+            </div>
           </div>
 
-        </div>
+          {/* ACTIONS */}
 
-        {/* OWNER */}
+          <div className="mt-7 flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="
+                flex-1
+                rounded-xl
+                border
+                border-blue-200
+                bg-white
+                py-3
+                text-[11px]
+                font-bold
+                text-[#1684ff]
+                transition
+                hover:bg-blue-50
+              "
+            >
+              Close
+            </button>
 
-        <div className="mt-7 rounded-2xl border border-blue-100 bg-gradient-to-r from-[#f3f8ff] to-[#eaf4ff] p-4">
-
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
-            Project owner
-          </p>
-
-          <div className="mt-2 flex items-center gap-3">
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#70b9f5] to-[#277bc9] text-[12px] font-bold text-white">
-              {project.createdBy?.name
-                ?.charAt(0)
-                .toUpperCase() || "U"}
-            </div>
-
-            <div>
-
-              <p className="text-[12px] font-bold text-[#123d78]">
-                {project.createdBy?.name ||
-                  "Unknown user"}
-              </p>
-
-              <p className="mt-0.5 text-[9px] text-gray-400">
-                {project.createdBy?.email ||
-                  ""}
-              </p>
-
-            </div>
-
+            <button
+              type="button"
+              className="
+                flex-1
+                rounded-xl
+                bg-gradient-to-r
+                from-[#1684ff]
+                to-[#0759bd]
+                py-3
+                text-[11px]
+                font-bold
+                text-white
+                shadow-lg
+                shadow-blue-200
+                transition
+                hover:-translate-y-[1px]
+              "
+            >
+              Connect & Collaborate
+            </button>
           </div>
-
         </div>
-
-        {/* ACTION */}
-
-        <div className="mt-7 flex gap-3">
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="
-              flex-1
-              rounded-xl
-              border
-              border-blue-200
-              bg-white
-              py-3
-              text-[11px]
-              font-bold
-              text-[#1684ff]
-              transition
-              hover:bg-blue-50
-            "
-          >
-            Close
-          </button>
-
-          <button
-            type="button"
-            className="
-              flex-1
-              rounded-xl
-              bg-[#1684ff]
-              py-3
-              text-[11px]
-              font-bold
-              text-white
-              transition
-              hover:bg-[#0874e8]
-            "
-          >
-            Connect / Collaborate
-          </button>
-
-        </div>
-
       </div>
     </div>
   );
@@ -510,63 +556,19 @@ const ProjectDetailsModal = ({
 const ExploreProjectsPage = () => {
   const navigate = useNavigate();
 
-  const [userName, setUserName] =
-    useState("User");
+  const API_URL = import.meta.env.VITE_API_URL;
 
-  const [projects, setProjects] =
-    useState<Project[]>([]);
-
-  const [searchTerm, setSearchTerm] =
-    useState("");
-
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] =
     useState("All");
 
   const [selectedProject, setSelectedProject] =
     useState<Project | null>(null);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
-
-  const [error, setError] =
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] =
     useState("");
-
-  const API_URL =
-    import.meta.env.VITE_API_URL;
-
-  // =====================================================
-  // FETCH CURRENT USER
-  // =====================================================
-
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const response = await fetch(
-          `${API_URL}/api/auth/me`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (!response.ok) {
-          return;
-        }
-
-        const data =
-          await response.json();
-
-        setUserName(data.user.name);
-      } catch (error) {
-        console.error(
-          "Failed to fetch current user:",
-          error
-        );
-      }
-    };
-
-    fetchCurrentUser();
-  }, [API_URL]);
 
   // =====================================================
   // FETCH ALL PROJECTS
@@ -574,34 +576,32 @@ const ExploreProjectsPage = () => {
 
   useEffect(() => {
     const fetchProjects = async () => {
-      setIsLoading(true);
-      setError("");
-
       try {
+        setIsLoading(true);
+        setErrorMessage("");
+
         const response = await fetch(
           `${API_URL}/api/projects`
         );
 
+        const data = await response.json();
+
         if (!response.ok) {
-          setError(
-            "Failed to load projects."
+          setErrorMessage(
+            data.message ||
+              "Failed to load projects."
           );
           return;
         }
 
-        const data =
-          await response.json();
-
-        setProjects(
-          data.projects || []
-        );
+        setProjects(data.projects || []);
       } catch (error) {
         console.error(
           "Fetch projects error:",
           error
         );
 
-        setError(
+        setErrorMessage(
           "Unable to connect to the server."
         );
       } finally {
@@ -617,92 +617,110 @@ const ExploreProjectsPage = () => {
   // =====================================================
 
   const categories = useMemo(() => {
-    const uniqueCategories =
-      Array.from(
-        new Set(
-          projects
-            .map(
-              (project) =>
-                project.category
-            )
-            .filter(Boolean)
-        )
-      );
+    const uniqueCategories = Array.from(
+      new Set(
+        projects
+          .map((project) => project.category)
+          .filter(Boolean)
+      )
+    );
 
-    return [
-      "All",
-      ...uniqueCategories,
-    ];
+    return ["All", ...uniqueCategories];
   }, [projects]);
 
   // =====================================================
   // FILTER PROJECTS
   // =====================================================
 
-  const filteredProjects =
-    useMemo(() => {
-      const query =
-        searchTerm
-          .trim()
-          .toLowerCase();
+  const filteredProjects = useMemo(() => {
+    const query = searchQuery
+      .trim()
+      .toLowerCase();
 
-      return projects.filter(
-        (project) => {
-          const matchesSearch =
-            !query ||
-            project.title
-              .toLowerCase()
-              .includes(query) ||
-            project.description
-              .toLowerCase()
-              .includes(query) ||
-            project.category
-              .toLowerCase()
-              .includes(query) ||
-            project.skills.some(
-              (skill) =>
-                skill
-                  .toLowerCase()
-                  .includes(query)
-            ) ||
-            project.createdBy?.name
-              ?.toLowerCase()
-              .includes(query);
+    return projects.filter((project) => {
+      const matchesCategory =
+        selectedCategory === "All" ||
+        project.category === selectedCategory;
 
-          const matchesCategory =
-            selectedCategory ===
-              "All" ||
-            project.category ===
-              selectedCategory;
+      if (!matchesCategory) {
+        return false;
+      }
 
-          return (
-            matchesSearch &&
-            matchesCategory
-          );
-        }
-      );
-    }, [
-      projects,
-      searchTerm,
-      selectedCategory,
-    ]);
+      if (!query) {
+        return true;
+      }
+
+      const searchableText = [
+        project.title,
+        project.description,
+        project.category,
+        project.teamSize,
+        project.createdBy?.name || "",
+        ...(project.skills || []),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(query);
+    });
+  }, [
+    projects,
+    searchQuery,
+    selectedCategory,
+  ]);
 
   return (
-    <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
-
+    <div
+      className="
+        min-h-screen
+        bg-[#f5f9ff]
+        text-[#12355b]
+      "
+    >
       {/* =====================================================
           TOP NAVBAR
       ===================================================== */}
 
-      <header className="fixed left-0 right-0 top-0 z-50 h-[70px] bg-gradient-to-r from-[#073b88] to-[#0b4da5] text-white shadow-lg">
-
+      <header
+        className="
+          fixed
+          left-0
+          right-0
+          top-0
+          z-50
+          h-[70px]
+          bg-gradient-to-r
+          from-[#073b88]
+          to-[#0b4da5]
+          text-white
+          shadow-lg
+        "
+      >
         <div className="flex h-full items-center">
-
           {/* LOGO */}
 
-          <div className="flex w-[240px] shrink-0 items-center gap-3 px-7">
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff] shadow-lg">
+          <div
+            className="
+              flex
+              w-[240px]
+              shrink-0
+              items-center
+              gap-3
+              px-7
+            "
+          >
+            <div
+              className="
+                flex
+                h-10
+                w-10
+                items-center
+                justify-center
+                rounded-xl
+                bg-[#1684ff]
+                shadow-lg
+              "
+            >
               <Users
                 size={23}
                 strokeWidth={2.5}
@@ -715,15 +733,25 @@ const ExploreProjectsPage = () => {
                 Nest
               </span>
             </span>
-
           </div>
 
-          {/* SEARCH */}
+          {/* TOP SEARCH */}
 
           <div className="flex flex-1 items-center justify-center px-5">
-
-            <div className="flex h-[44px] w-full max-w-[580px] items-center gap-3 rounded-full bg-white/10 px-5 backdrop-blur-md">
-
+            <div
+              className="
+                flex
+                h-[44px]
+                w-full
+                max-w-[580px]
+                items-center
+                gap-3
+                rounded-full
+                bg-white/10
+                px-5
+                backdrop-blur-md
+              "
+            >
               <Search
                 size={19}
                 className="text-white/80"
@@ -731,9 +759,9 @@ const ExploreProjectsPage = () => {
 
               <input
                 type="text"
-                value={searchTerm}
+                value={searchQuery}
                 onChange={(event) =>
-                  setSearchTerm(
+                  setSearchQuery(
                     event.target.value
                   )
                 }
@@ -747,50 +775,78 @@ const ExploreProjectsPage = () => {
                   placeholder:text-white/60
                 "
               />
-
             </div>
-
           </div>
 
-          {/* RIGHT */}
+          {/* PROFILE */}
 
           <div className="flex items-center gap-4 px-6">
+            <div className="relative">
+              <button
+                type="button"
+                className="
+                  flex
+                  h-10
+                  w-10
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-white/10
+                "
+              >
+                <span className="text-lg">
+                  🔔
+                </span>
+              </button>
 
-            <button
-              type="button"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-white/10"
-            >
-              <Bell size={21} />
-
-              <span className="absolute right-0 top-0 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ff5757] px-1 text-[9px] font-bold">
+              <span
+                className="
+                  absolute
+                  -right-1
+                  -top-1
+                  flex
+                  h-5
+                  min-w-5
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-red-500
+                  px-1
+                  text-[9px]
+                  font-bold
+                "
+              >
                 3
               </span>
-            </button>
+            </div>
 
-            <button
-              type="button"
-              className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
+            <div
+              className="
+                flex
+                h-10
+                w-10
+                items-center
+                justify-center
+                rounded-full
+                bg-gradient-to-br
+                from-[#7cc4ff]
+                to-[#2378d8]
+                text-[13px]
+                font-bold
+              "
             >
+              H
+            </div>
 
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
-                {userName
-                  .charAt(0)
-                  .toUpperCase()}
-              </div>
+            <span className="hidden text-[13px] font-semibold lg:block">
+              Harsh
+            </span>
 
-              <span className="hidden text-[13px] font-semibold lg:block">
-                {userName}
-              </span>
-
-              <ChevronRight
-                size={15}
-                className="hidden rotate-90 lg:block"
-              />
-
-            </button>
-
+            <ChevronRight
+              size={15}
+              className="rotate-90"
+            />
           </div>
-
         </div>
       </header>
 
@@ -816,9 +872,7 @@ const ExploreProjectsPage = () => {
           md:flex
         "
       >
-
         <nav className="flex-1 px-3 py-5">
-
           <SidebarItem
             icon={<Home size={20} />}
             label="Dashboard"
@@ -829,17 +883,10 @@ const ExploreProjectsPage = () => {
 
           <SidebarItem
             icon={
-              <BriefcaseBusiness
-                size={20}
-              />
+              <BriefcaseBusiness size={20} />
             }
-            label="Explore Projects"
+            label="Find Projects"
             active
-            onClick={() =>
-              navigate(
-                "/explore-projects"
-              )
-            }
           />
 
           <SidebarItem
@@ -882,27 +929,32 @@ const ExploreProjectsPage = () => {
             icon={<LogOut size={20} />}
             label="Logout"
           />
-
         </nav>
       </aside>
 
       {/* =====================================================
-          MAIN CONTENT
+          SCROLLABLE MAIN CONTENT
       ===================================================== */}
 
-      <main className="min-h-screen pt-[70px] md:ml-[240px]">
-
+      <main
+        className="
+          h-screen
+          overflow-y-auto
+          pt-[70px]
+          md:ml-[240px]
+        "
+      >
         <div className="mx-auto max-w-[1500px] p-5 md:p-7">
-
           {/* =================================================
-              PAGE HEADER
+              HERO
           ================================================= */}
 
-          <div
+          <section
             className="
               relative
+              min-h-[350px]
               overflow-hidden
-              rounded-3xl
+              rounded-2xl
               border
               border-blue-100
               bg-gradient-to-br
@@ -911,75 +963,127 @@ const ExploreProjectsPage = () => {
               to-[#c9e4ff]
               p-7
               shadow-sm
-              md:p-9
             "
           >
+            {/* DECORATIVE SHAPES */}
 
-            {/* BACKGROUND SHAPES */}
+            <div
+              className="
+                absolute
+                -right-16
+                -top-20
+                h-56
+                w-56
+                rounded-full
+                bg-white/30
+              "
+            />
 
-            <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/30" />
+            <div
+              className="
+                absolute
+                bottom-[-100px]
+                right-[25%]
+                h-64
+                w-64
+                rounded-full
+                bg-[#8fc8fa]/25
+              "
+            />
 
-            <div className="absolute -bottom-28 right-[25%] h-60 w-60 rounded-full bg-[#8cc6ff]/20" />
+            {/* CONTENT */}
 
-            <div className="relative z-10">
-
-              <div className="flex flex-wrap items-center justify-between gap-5">
-
-                <div>
-
-                  <div className="flex items-center gap-2">
-
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff] text-white shadow-md">
-                      <Users size={21} />
-                    </div>
-
-                    <span className="rounded-full bg-white/70 px-3 py-1 text-[9px] font-bold text-[#1684ff]">
-                      COLLABORATE
-                    </span>
-
-                  </div>
-
-                  <h1 className="mt-4 text-[30px] font-bold tracking-[-1px] text-[#103b76] md:text-[38px]">
-                    Find Collaborators
-                  </h1>
-
-                  <p className="mt-2 max-w-[600px] text-[12px] leading-6 text-[#315f96] md:text-[14px]">
-                    Explore projects posted by
-                    students and find the right
-                    people to build something
-                    amazing together.
-                  </p>
-
+            <div className="relative z-10 max-w-[850px]">
+              <div className="flex items-center gap-3">
+                <div
+                  className="
+                    flex
+                    h-11
+                    w-11
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-[#1684ff]
+                    text-white
+                    shadow-lg
+                  "
+                >
+                  <Users size={23} />
                 </div>
 
-                <div className="rounded-2xl bg-white/70 px-5 py-4 shadow-sm">
-
-                  <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
-                    Available Projects
-                  </p>
-
-                  <p className="mt-1 text-[25px] font-bold text-[#123d78]">
-                    {projects.length}
-                  </p>
-
-                </div>
-
+                <span
+                  className="
+                    rounded-full
+                    bg-white/70
+                    px-3
+                    py-1.5
+                    text-[9px]
+                    font-bold
+                    uppercase
+                    tracking-wide
+                    text-[#1684ff]
+                  "
+                >
+                  Collaborate
+                </span>
               </div>
+
+              <h1
+                className="
+                  mt-7
+                  text-[38px]
+                  font-bold
+                  tracking-[-1.5px]
+                  text-[#123d78]
+                  md:text-[48px]
+                "
+              >
+                Find Collaborators
+              </h1>
+
+              <p
+                className="
+                  mt-3
+                  max-w-[700px]
+                  text-[13px]
+                  leading-6
+                  text-[#2367a8]
+                  md:text-[15px]
+                "
+              >
+                Explore projects posted by
+                students and find the right
+                people to build something
+                amazing together.
+              </p>
 
               {/* SEARCH */}
 
-              <div className="mt-7 flex h-[52px] w-full max-w-[720px] items-center gap-3 rounded-full bg-white px-5 shadow-md">
-
+              <div
+                className="
+                  mt-7
+                  flex
+                  h-[58px]
+                  w-full
+                  max-w-[800px]
+                  items-center
+                  gap-3
+                  rounded-full
+                  bg-white
+                  px-6
+                  shadow-lg
+                "
+              >
                 <Search
-                  size={20}
-                  className="shrink-0 text-[#5595d8]"
+                  size={21}
+                  className="text-[#1684ff]"
                 />
 
                 <input
                   type="text"
-                  value={searchTerm}
+                  value={searchQuery}
                   onChange={(event) =>
-                    setSearchTerm(
+                    setSearchQuery(
                       event.target.value
                     )
                   }
@@ -988,129 +1092,213 @@ const ExploreProjectsPage = () => {
                     w-full
                     bg-transparent
                     text-[12px]
-                    text-[#315f96]
+                    text-[#123d78]
                     outline-none
                     placeholder:text-gray-400
+                    md:text-[13px]
                   "
                 />
 
-                {searchTerm && (
+                {searchQuery && (
                   <button
                     type="button"
                     onClick={() =>
-                      setSearchTerm("")
+                      setSearchQuery("")
                     }
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200"
+                    className="
+                      flex
+                      h-7
+                      w-7
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-gray-100
+                      text-gray-500
+                      hover:bg-gray-200
+                    "
                   >
-                    <X size={15} />
+                    <X size={14} />
                   </button>
                 )}
-
               </div>
-
             </div>
 
-          </div>
+            {/* PROJECT COUNT */}
 
-          {/* =================================================
-              FILTERS
-          ================================================= */}
-
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
-
-            <div>
-
-              <h2 className="text-[21px] font-bold text-[#123d78]">
-                All Projects
-              </h2>
-
-              <p className="mt-1 text-[10px] text-gray-400">
-                Discover projects and find
-                students to collaborate with.
+            <div
+              className="
+                absolute
+                right-8
+                top-8
+                hidden
+                rounded-2xl
+                border
+                border-blue-100
+                bg-white/80
+                px-6
+                py-5
+                shadow-sm
+                backdrop-blur
+                md:block
+              "
+            >
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
+                Available Projects
               </p>
 
+              <p className="mt-2 text-[25px] font-bold text-[#123d78]">
+                {projects.length}
+              </p>
             </div>
-
-            {/* CATEGORY FILTER */}
-
-            <div className="flex flex-wrap gap-2">
-
-              {categories.map(
-                (category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() =>
-                      setSelectedCategory(
-                        category
-                      )
-                    }
-                    className={`
-                      rounded-full
-                      px-4
-                      py-2
-                      text-[9px]
-                      font-bold
-                      transition
-                      ${
-                        selectedCategory ===
-                        category
-                          ? "bg-[#1684ff] text-white shadow-sm"
-                          : "border border-blue-100 bg-white text-[#4d79a8] hover:bg-blue-50"
-                      }
-                    `}
-                  >
-                    {category}
-                  </button>
-                )
-              )}
-
-            </div>
-
-          </div>
+          </section>
 
           {/* =================================================
-              PROJECT RESULTS
+              PROJECT SECTION
           ================================================= */}
 
-          <div className="mt-5">
+          <section className="mt-8">
+            {/* HEADER */}
 
-            {isLoading ? (
+            <div
+              className="
+                flex
+                flex-col
+                gap-4
+                md:flex-row
+                md:items-end
+                md:justify-between
+              "
+            >
+              <div>
+                <div className="flex items-center gap-3">
+                  <SlidersHorizontal
+                    size={21}
+                    className="text-[#1684ff]"
+                  />
 
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-
-                {[1, 2, 3, 4, 5, 6].map(
-                  (item) => (
-                    <div
-                      key={item}
-                      className="
-                        h-[250px]
-                        animate-pulse
-                        rounded-2xl
-                        border
-                        border-blue-100
-                        bg-white
-                      "
-                    />
-                  )
-                )}
-
-              </div>
-
-            ) : error ? (
-
-              <div className="rounded-2xl border border-red-100 bg-white p-10 text-center">
-
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-500">
-                  <X size={22} />
+                  <h2
+                    className="
+                      text-[24px]
+                      font-bold
+                      text-[#123d78]
+                    "
+                  >
+                    All Projects
+                  </h2>
                 </div>
 
-                <h3 className="mt-4 text-[15px] font-bold text-[#123d78]">
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Browse all projects posted
+                  by students on CollabNest.
+                </p>
+              </div>
+
+              <div
+                className="
+                  rounded-full
+                  bg-blue-50
+                  px-4
+                  py-2
+                  text-[10px]
+                  font-bold
+                  text-[#1684ff]
+                "
+              >
+                {filteredProjects.length}{" "}
+                {filteredProjects.length === 1
+                  ? "Project"
+                  : "Projects"}
+              </div>
+            </div>
+
+            {/* CATEGORY FILTERS */}
+
+            <div
+              className="
+                mt-5
+                flex
+                gap-2
+                overflow-x-auto
+                pb-2
+              "
+            >
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() =>
+                    setSelectedCategory(
+                      category
+                    )
+                  }
+                  className={`
+                    shrink-0
+                    rounded-full
+                    px-4
+                    py-2
+                    text-[10px]
+                    font-bold
+                    transition
+                    ${
+                      selectedCategory ===
+                      category
+                        ? "bg-[#1684ff] text-white shadow-sm"
+                        : "border border-blue-100 bg-white text-[#2367a8] hover:bg-blue-50"
+                    }
+                  `}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+
+            {/* =================================================
+                LOADING
+            ================================================= */}
+
+            {isLoading && (
+              <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {Array.from({
+                  length: 6,
+                }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="
+                      h-[245px]
+                      animate-pulse
+                      rounded-2xl
+                      border
+                      border-blue-100
+                      bg-white
+                    "
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* =================================================
+                ERROR
+            ================================================= */}
+
+            {!isLoading && errorMessage && (
+              <div
+                className="
+                  mt-6
+                  rounded-2xl
+                  border
+                  border-red-100
+                  bg-white
+                  p-8
+                  text-center
+                "
+              >
+                <h3 className="text-[15px] font-bold text-red-500">
                   Unable to load projects
                 </h3>
 
                 <p className="mt-2 text-[11px] text-gray-500">
-                  {error}
+                  {errorMessage}
                 </p>
 
                 <button
@@ -1118,88 +1306,43 @@ const ExploreProjectsPage = () => {
                   onClick={() =>
                     window.location.reload()
                   }
-                  className="mt-5 rounded-xl bg-[#1684ff] px-5 py-2.5 text-[10px] font-bold text-white transition hover:bg-[#0874e8]"
+                  className="
+                    mt-4
+                    rounded-xl
+                    bg-[#1684ff]
+                    px-5
+                    py-2.5
+                    text-[10px]
+                    font-bold
+                    text-white
+                  "
                 >
                   Try Again
                 </button>
-
               </div>
+            )}
 
-            ) : filteredProjects.length ===
-              0 ? (
+            {/* =================================================
+                ALL PROJECTS
+            ================================================= */}
 
-              <div className="rounded-2xl border border-dashed border-blue-200 bg-white p-12 text-center">
-
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-[#1684ff]">
-                  <Search size={24} />
-                </div>
-
-                <h3 className="mt-5 text-[16px] font-bold text-[#123d78]">
-                  No projects found
-                </h3>
-
-                <p className="mx-auto mt-2 max-w-[400px] text-[11px] leading-5 text-gray-500">
-                  Try searching for a
-                  different project name,
-                  skill, category, or
-                  student.
-                </p>
-
-                {(searchTerm ||
-                  selectedCategory !==
-                    "All") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchTerm("");
-                      setSelectedCategory(
-                        "All"
-                      );
-                    }}
-                    className="mt-5 rounded-xl bg-[#1684ff] px-5 py-2.5 text-[10px] font-bold text-white transition hover:bg-[#0874e8]"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-
-              </div>
-
-            ) : (
-
-              <>
-
-                <div className="mb-4 flex items-center justify-between">
-
-                  <p className="text-[10px] text-gray-400">
-
-                    Showing{" "}
-                    <span className="font-bold text-[#123d78]">
-                      {filteredProjects.length}
-                    </span>{" "}
-                    {filteredProjects.length ===
-                    1
-                      ? "project"
-                      : "projects"}
-
-                  </p>
-
-                </div>
-
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-
+            {!isLoading &&
+              !errorMessage &&
+              filteredProjects.length > 0 && (
+                <div
+                  className="
+                    mt-6
+                    grid
+                    gap-5
+                    md:grid-cols-2
+                    xl:grid-cols-3
+                  "
+                >
                   {filteredProjects.map(
-                    (
-                      project,
-                      index
-                    ) => (
+                    (project) => (
                       <ProjectCard
-                        key={
-                          project._id
-                        }
-                        project={
-                          project
-                        }
-                        index={index}
+                        key={project._id}
+                        project={project}
                         onView={() =>
                           setSelectedProject(
                             project
@@ -1208,17 +1351,106 @@ const ExploreProjectsPage = () => {
                       />
                     )
                   )}
-
                 </div>
+              )}
 
-              </>
+            {/* =================================================
+                NO RESULTS
+            ================================================= */}
 
-            )}
+            {!isLoading &&
+              !errorMessage &&
+              filteredProjects.length ===
+                0 && (
+                <div
+                  className="
+                    mt-6
+                    rounded-2xl
+                    border
+                    border-dashed
+                    border-blue-200
+                    bg-white
+                    p-12
+                    text-center
+                  "
+                >
+                  <div
+                    className="
+                      mx-auto
+                      flex
+                      h-14
+                      w-14
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      bg-blue-50
+                      text-[#1684ff]
+                    "
+                  >
+                    <Search size={24} />
+                  </div>
 
-          </div>
+                  <h3
+                    className="
+                      mt-5
+                      text-[16px]
+                      font-bold
+                      text-[#123d78]
+                    "
+                  >
+                    No projects found
+                  </h3>
 
+                  <p
+                    className="
+                      mx-auto
+                      mt-2
+                      max-w-[400px]
+                      text-[11px]
+                      leading-5
+                      text-gray-500
+                    "
+                  >
+                    Try another search term
+                    or choose a different
+                    category.
+                  </p>
+
+                  {(searchQuery ||
+                    selectedCategory !==
+                      "All") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedCategory(
+                          "All"
+                        );
+                      }}
+                      className="
+                        mt-5
+                        rounded-xl
+                        bg-[#1684ff]
+                        px-5
+                        py-2.5
+                        text-[10px]
+                        font-bold
+                        text-white
+                        transition
+                        hover:bg-[#0874e8]
+                      "
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+              )}
+
+            {/* BOTTOM SPACE */}
+
+            <div className="h-10" />
+          </section>
         </div>
-
       </main>
 
       {/* =====================================================
@@ -1227,17 +1459,12 @@ const ExploreProjectsPage = () => {
 
       {selectedProject && (
         <ProjectDetailsModal
-          project={
-            selectedProject
-          }
+          project={selectedProject}
           onClose={() =>
-            setSelectedProject(
-              null
-            )
+            setSelectedProject(null)
           }
         />
       )}
-
     </div>
   );
 };
