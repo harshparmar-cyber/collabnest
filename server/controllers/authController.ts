@@ -160,15 +160,19 @@ export const getCurrentUser = async (
       res.status(401).json({
         message: "Authentication required.",
       });
+
       return;
     }
 
-    const user = await User.findById(req.userId).select("-password");
+    const user = await User.findById(
+      req.userId
+    ).select("-password");
 
     if (!user) {
       res.status(404).json({
         message: "User not found.",
       });
+
       return;
     }
 
@@ -177,13 +181,202 @@ export const getCurrentUser = async (
         id: user._id,
         name: user.name,
         email: user.email,
+        bio: user.bio,
+        skills: user.skills,
+        profilePhoto: user.profilePhoto,
+        portfolio: user.portfolio,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
-    console.error("Get current user error:", error);
+    console.error(
+      "Get current user error:",
+      error
+    );
 
     res.status(500).json({
       message: "Something went wrong.",
+    });
+  }
+};
+
+export const updateProfile = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        message: "Authentication required.",
+      });
+
+      return;
+    }
+
+    const {
+      name,
+      bio,
+      skills,
+      profilePhoto,
+      portfolio,
+    } = req.body;
+
+    if (!name || !name.trim()) {
+      res.status(400).json({
+        message: "Name is required.",
+      });
+
+      return;
+    }
+
+    if (name.trim().length > 60) {
+      res.status(400).json({
+        message:
+          "Name cannot be longer than 60 characters.",
+      });
+
+      return;
+    }
+
+    if (
+      typeof bio === "string" &&
+      bio.length > 500
+    ) {
+      res.status(400).json({
+        message:
+          "Bio cannot be longer than 500 characters.",
+      });
+
+      return;
+    }
+
+    const user = await User.findById(
+      req.userId
+    );
+
+    if (!user) {
+      res.status(404).json({
+        message: "User not found.",
+      });
+
+      return;
+    }
+
+    user.name = name.trim();
+
+    user.bio =
+      typeof bio === "string"
+        ? bio.trim()
+        : "";
+
+    user.skills = Array.isArray(skills)
+      ? skills
+          .filter(
+            (skill): skill is string =>
+              typeof skill === "string"
+          )
+          .map((skill) => skill.trim())
+          .filter(Boolean)
+      : [];
+
+    user.profilePhoto =
+      typeof profilePhoto === "string"
+        ? profilePhoto.trim()
+        : "";
+
+    user.portfolio =
+      Array.isArray(portfolio)
+        ? portfolio.map((project) => ({
+            title:
+              typeof project.title === "string"
+                ? project.title.trim()
+                : "",
+
+            description:
+              typeof project.description ===
+              "string"
+                ? project.description.trim()
+                : "",
+
+            link:
+              typeof project.link === "string"
+                ? project.link.trim()
+                : "",
+
+            image:
+              typeof project.image === "string"
+                ? project.image.trim()
+                : "",
+          }))
+        : [];
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully.",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        bio: user.bio,
+        skills: user.skills,
+        profilePhoto: user.profilePhoto,
+        portfolio: user.portfolio,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Update profile error:",
+      error
+    );
+
+    res.status(500).json({
+      message:
+        "Something went wrong while updating your profile.",
+    });
+  }
+};
+
+export const getUserProfile = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select(
+      "-password -email"
+    );
+
+    if (!user) {
+      res.status(404).json({
+        message: "User profile not found.",
+      });
+
+      return;
+    }
+
+    res.status(200).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        bio: user.bio,
+        skills: user.skills,
+        profilePhoto: user.profilePhoto,
+        portfolio: user.portfolio,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Get user profile error:",
+      error
+    );
+
+    res.status(500).json({
+      message:
+        "Something went wrong while loading the profile.",
     });
   }
 };
