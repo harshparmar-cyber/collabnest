@@ -10,6 +10,7 @@ import {
   Search,
   Settings,
   SlidersHorizontal,
+  User,
   Users,
   X,
 } from "lucide-react";
@@ -20,6 +21,7 @@ type ProjectOwner = {
   _id: string;
   name: string;
   email: string;
+  profilePhoto?: string;
 };
 
 type Project = {
@@ -89,11 +91,13 @@ const SidebarItem = ({
 type ProjectCardProps = {
   project: Project;
   onView: () => void;
+  onOwnerClick: () => void;
 };
 
 const ProjectCard = ({
   project,
   onView,
+  onOwnerClick,
 }: ProjectCardProps) => {
   return (
     <div
@@ -225,17 +229,64 @@ const ProjectCard = ({
       {/* BOTTOM */}
 
       <div className="mt-auto flex items-end justify-between gap-3 pt-5">
-        <div>
+        <div className="min-w-0">
           <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">
             Posted by
           </p>
 
-          <p className="mt-1 max-w-[150px] truncate text-[11px] font-bold text-[#123d78]">
-            {project.createdBy?.name || "Student"}
-          </p>
+          <button
+            type="button"
+            onClick={onOwnerClick}
+            className="
+              mt-1
+              flex
+              max-w-[180px]
+              items-center
+              gap-2
+              rounded-full
+              text-left
+              transition
+              hover:opacity-80
+            "
+          >
+            <span
+              className="
+                flex
+                h-7
+                w-7
+                shrink-0
+                items-center
+                justify-center
+                overflow-hidden
+                rounded-full
+                bg-gradient-to-br
+                from-[#7cc4ff]
+                to-[#2378d8]
+                text-[9px]
+                font-bold
+                text-white
+              "
+            >
+              {project.createdBy?.profilePhoto ? (
+                <img
+                  src={project.createdBy.profilePhoto}
+                  alt={project.createdBy?.name || "Student"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                project.createdBy?.name?.charAt(0).toUpperCase() || (
+                  <User size={12} />
+                )
+              )}
+            </span>
+
+            <span className="truncate text-[11px] font-bold text-[#123d78] hover:underline">
+              {project.createdBy?.name || "Student"}
+            </span>
+          </button>
         </div>
 
-        <div className="text-right">
+        <div className="shrink-0 text-right">
           <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">
             Team size
           </p>
@@ -278,11 +329,13 @@ const ProjectCard = ({
 type ProjectDetailsModalProps = {
   project: Project;
   onClose: () => void;
+  onOwnerClick: () => void;
 };
 
 const ProjectDetailsModal = ({
   project,
   onClose,
+  onOwnerClick,
 }: ProjectDetailsModalProps) => {
   return (
     <div
@@ -390,9 +443,12 @@ const ProjectDetailsModal = ({
         <div className="p-7">
           {/* OWNER */}
 
-          <div
+          <button
+            type="button"
+            onClick={onOwnerClick}
             className="
               flex
+              w-full
               items-center
               gap-3
               rounded-2xl
@@ -400,6 +456,10 @@ const ProjectDetailsModal = ({
               border-blue-100
               bg-[#f7fbff]
               p-4
+              text-left
+              transition
+              hover:border-blue-200
+              hover:bg-[#f1f8ff]
             "
           >
             <div
@@ -407,8 +467,10 @@ const ProjectDetailsModal = ({
                 flex
                 h-11
                 w-11
+                shrink-0
                 items-center
                 justify-center
+                overflow-hidden
                 rounded-full
                 bg-gradient-to-br
                 from-[#7cc4ff]
@@ -418,25 +480,38 @@ const ProjectDetailsModal = ({
                 text-white
               "
             >
-              {project.createdBy?.name
-                ?.charAt(0)
-                .toUpperCase() || "S"}
+              {project.createdBy?.profilePhoto ? (
+                <img
+                  src={project.createdBy.profilePhoto}
+                  alt={project.createdBy?.name || "Student"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                project.createdBy?.name?.charAt(0).toUpperCase() || (
+                  <User size={16} />
+                )
+              )}
             </div>
 
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">
                 Posted by
               </p>
 
-              <p className="mt-0.5 text-[13px] font-bold text-[#123d78]">
+              <p className="mt-0.5 truncate text-[13px] font-bold text-[#123d78]">
                 {project.createdBy?.name || "Student"}
               </p>
 
-              <p className="text-[10px] text-gray-500">
+              <p className="truncate text-[10px] text-gray-500">
                 {project.createdBy?.email || ""}
               </p>
             </div>
-          </div>
+
+            <ChevronRight
+              size={17}
+              className="shrink-0 text-[#1684ff]"
+            />
+          </button>
 
           {/* DESCRIPTION */}
 
@@ -560,15 +635,13 @@ const ExploreProjectsPage = () => {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] =
-    useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const [selectedProject, setSelectedProject] =
     useState<Project | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // =====================================================
   // FETCH ALL PROJECTS
@@ -580,30 +653,22 @@ const ExploreProjectsPage = () => {
         setIsLoading(true);
         setErrorMessage("");
 
-        const response = await fetch(
-          `${API_URL}/api/projects`
-        );
+        const response = await fetch(`${API_URL}/api/projects`);
 
         const data = await response.json();
 
         if (!response.ok) {
           setErrorMessage(
-            data.message ||
-              "Failed to load projects."
+            data.message || "Failed to load projects."
           );
           return;
         }
 
         setProjects(data.projects || []);
       } catch (error) {
-        console.error(
-          "Fetch projects error:",
-          error
-        );
+        console.error("Fetch projects error:", error);
 
-        setErrorMessage(
-          "Unable to connect to the server."
-        );
+        setErrorMessage("Unable to connect to the server.");
       } finally {
         setIsLoading(false);
       }
@@ -633,9 +698,7 @@ const ExploreProjectsPage = () => {
   // =====================================================
 
   const filteredProjects = useMemo(() => {
-    const query = searchQuery
-      .trim()
-      .toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
 
     return projects.filter((project) => {
       const matchesCategory =
@@ -663,20 +726,10 @@ const ExploreProjectsPage = () => {
 
       return searchableText.includes(query);
     });
-  }, [
-    projects,
-    searchQuery,
-    selectedCategory,
-  ]);
+  }, [projects, searchQuery, selectedCategory]);
 
   return (
-    <div
-      className="
-        min-h-screen
-        bg-[#f5f9ff]
-        text-[#12355b]
-      "
-    >
+    <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
       {/* =====================================================
           TOP NAVBAR
       ===================================================== */}
@@ -721,17 +774,12 @@ const ExploreProjectsPage = () => {
                 shadow-lg
               "
             >
-              <Users
-                size={23}
-                strokeWidth={2.5}
-              />
+              <Users size={23} strokeWidth={2.5} />
             </div>
 
             <span className="text-[22px] font-bold tracking-[-0.8px]">
               Collab
-              <span className="text-[#74b9ff]">
-                Nest
-              </span>
+              <span className="text-[#74b9ff]">Nest</span>
             </span>
           </div>
 
@@ -752,19 +800,12 @@ const ExploreProjectsPage = () => {
                 backdrop-blur-md
               "
             >
-              <Search
-                size={19}
-                className="text-white/80"
-              />
+              <Search size={19} className="text-white/80" />
 
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(event) =>
-                  setSearchQuery(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search projects, skills, or students..."
                 className="
                   w-full
@@ -794,9 +835,7 @@ const ExploreProjectsPage = () => {
                   bg-white/10
                 "
               >
-                <span className="text-lg">
-                  🔔
-                </span>
+                <span className="text-lg">🔔</span>
               </button>
 
               <span
@@ -820,27 +859,37 @@ const ExploreProjectsPage = () => {
               </span>
             </div>
 
-            <div
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
               className="
                 flex
                 h-10
                 w-10
                 items-center
                 justify-center
+                overflow-hidden
                 rounded-full
                 bg-gradient-to-br
                 from-[#7cc4ff]
                 to-[#2378d8]
                 text-[13px]
                 font-bold
+                transition
+                hover:ring-2
+                hover:ring-white/40
               "
             >
-              H
-            </div>
+              <User size={16} />
+            </button>
 
-            <span className="hidden text-[13px] font-semibold lg:block">
-              Harsh
-            </span>
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="hidden text-[13px] font-semibold hover:underline lg:block"
+            >
+              Profile
+            </button>
 
             <ChevronRight
               size={15}
@@ -876,15 +925,11 @@ const ExploreProjectsPage = () => {
           <SidebarItem
             icon={<Home size={20} />}
             label="Dashboard"
-            onClick={() =>
-              navigate("/dashboard")
-            }
+            onClick={() => navigate("/dashboard")}
           />
 
           <SidebarItem
-            icon={
-              <BriefcaseBusiness size={20} />
-            }
+            icon={<BriefcaseBusiness size={20} />}
             label="Find Projects"
             active
           />
@@ -892,9 +937,7 @@ const ExploreProjectsPage = () => {
           <SidebarItem
             icon={<Plus size={21} />}
             label="Post a Project"
-            onClick={() =>
-              navigate("/post-project")
-            }
+            onClick={() => navigate("/post-project")}
           />
 
           <SidebarItem
@@ -903,9 +946,7 @@ const ExploreProjectsPage = () => {
           />
 
           <SidebarItem
-            icon={
-              <MessageCircle size={20} />
-            }
+            icon={<MessageCircle size={20} />}
             label="Messages"
             badge="2"
           />
@@ -1051,10 +1092,8 @@ const ExploreProjectsPage = () => {
                   md:text-[15px]
                 "
               >
-                Explore projects posted by
-                students and find the right
-                people to build something
-                amazing together.
+                Explore projects posted by students and find the right
+                people to build something amazing together.
               </p>
 
               {/* SEARCH */}
@@ -1074,19 +1113,12 @@ const ExploreProjectsPage = () => {
                   shadow-lg
                 "
               >
-                <Search
-                  size={21}
-                  className="text-[#1684ff]"
-                />
+                <Search size={21} className="text-[#1684ff]" />
 
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(event) =>
-                    setSearchQuery(
-                      event.target.value
-                    )
-                  }
+                  onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search projects, skills, categories, or students..."
                   className="
                     w-full
@@ -1102,9 +1134,7 @@ const ExploreProjectsPage = () => {
                 {searchQuery && (
                   <button
                     type="button"
-                    onClick={() =>
-                      setSearchQuery("")
-                    }
+                    onClick={() => setSearchQuery("")}
                     className="
                       flex
                       h-7
@@ -1189,8 +1219,7 @@ const ExploreProjectsPage = () => {
                 </div>
 
                 <p className="mt-1 text-[11px] text-gray-500">
-                  Browse all projects posted
-                  by students on CollabNest.
+                  Browse all projects posted by students on CollabNest.
                 </p>
               </div>
 
@@ -1206,9 +1235,7 @@ const ExploreProjectsPage = () => {
                 "
               >
                 {filteredProjects.length}{" "}
-                {filteredProjects.length === 1
-                  ? "Project"
-                  : "Projects"}
+                {filteredProjects.length === 1 ? "Project" : "Projects"}
               </div>
             </div>
 
@@ -1227,11 +1254,7 @@ const ExploreProjectsPage = () => {
                 <button
                   key={category}
                   type="button"
-                  onClick={() =>
-                    setSelectedCategory(
-                      category
-                    )
-                  }
+                  onClick={() => setSelectedCategory(category)}
                   className={`
                     shrink-0
                     rounded-full
@@ -1241,8 +1264,7 @@ const ExploreProjectsPage = () => {
                     font-bold
                     transition
                     ${
-                      selectedCategory ===
-                      category
+                      selectedCategory === category
                         ? "bg-[#1684ff] text-white shadow-sm"
                         : "border border-blue-100 bg-white text-[#2367a8] hover:bg-blue-50"
                     }
@@ -1253,15 +1275,11 @@ const ExploreProjectsPage = () => {
               ))}
             </div>
 
-            {/* =================================================
-                LOADING
-            ================================================= */}
+            {/* LOADING */}
 
             {isLoading && (
               <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {Array.from({
-                  length: 6,
-                }).map((_, index) => (
+                {Array.from({ length: 6 }).map((_, index) => (
                   <div
                     key={index}
                     className="
@@ -1277,9 +1295,7 @@ const ExploreProjectsPage = () => {
               </div>
             )}
 
-            {/* =================================================
-                ERROR
-            ================================================= */}
+            {/* ERROR */}
 
             {!isLoading && errorMessage && (
               <div
@@ -1303,9 +1319,7 @@ const ExploreProjectsPage = () => {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    window.location.reload()
-                  }
+                  onClick={() => window.location.reload()}
                   className="
                     mt-4
                     rounded-xl
@@ -1322,9 +1336,7 @@ const ExploreProjectsPage = () => {
               </div>
             )}
 
-            {/* =================================================
-                ALL PROJECTS
-            ================================================= */}
+            {/* ALL PROJECTS */}
 
             {!isLoading &&
               !errorMessage &&
@@ -1338,30 +1350,28 @@ const ExploreProjectsPage = () => {
                     xl:grid-cols-3
                   "
                 >
-                  {filteredProjects.map(
-                    (project) => (
-                      <ProjectCard
-                        key={project._id}
-                        project={project}
-                        onView={() =>
-                          setSelectedProject(
-                            project
-                          )
+                  {filteredProjects.map((project) => (
+                    <ProjectCard
+                      key={project._id}
+                      project={project}
+                      onView={() => setSelectedProject(project)}
+                      onOwnerClick={() => {
+                        if (project.createdBy?._id) {
+                          navigate(
+                            `/profile/${project.createdBy._id}`
+                          );
                         }
-                      />
-                    )
-                  )}
+                      }}
+                    />
+                  ))}
                 </div>
               )}
 
-            {/* =================================================
-                NO RESULTS
-            ================================================= */}
+            {/* NO RESULTS */}
 
             {!isLoading &&
               !errorMessage &&
-              filteredProjects.length ===
-                0 && (
+              filteredProjects.length === 0 && (
                 <div
                   className="
                     mt-6
@@ -1411,21 +1421,15 @@ const ExploreProjectsPage = () => {
                       text-gray-500
                     "
                   >
-                    Try another search term
-                    or choose a different
-                    category.
+                    Try another search term or choose a different category.
                   </p>
 
-                  {(searchQuery ||
-                    selectedCategory !==
-                      "All") && (
+                  {(searchQuery || selectedCategory !== "All") && (
                     <button
                       type="button"
                       onClick={() => {
                         setSearchQuery("");
-                        setSelectedCategory(
-                          "All"
-                        );
+                        setSelectedCategory("All");
                       }}
                       className="
                         mt-5
@@ -1453,16 +1457,20 @@ const ExploreProjectsPage = () => {
         </div>
       </main>
 
-      {/* =====================================================
-          PROJECT DETAILS MODAL
-      ===================================================== */}
+      {/* PROJECT DETAILS MODAL */}
 
       {selectedProject && (
         <ProjectDetailsModal
           project={selectedProject}
-          onClose={() =>
-            setSelectedProject(null)
-          }
+          onClose={() => setSelectedProject(null)}
+          onOwnerClick={() => {
+            if (selectedProject.createdBy?._id) {
+              setSelectedProject(null);
+              navigate(
+                `/profile/${selectedProject.createdBy._id}`
+              );
+            }
+          }}
         />
       )}
     </div>

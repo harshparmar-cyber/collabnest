@@ -231,8 +231,7 @@ export const updateProfile = async (
 
     if (name.trim().length > 60) {
       res.status(400).json({
-        message:
-          "Name cannot be longer than 60 characters.",
+        message: "Name cannot be longer than 60 characters.",
       });
 
       return;
@@ -243,16 +242,46 @@ export const updateProfile = async (
       bio.length > 500
     ) {
       res.status(400).json({
-        message:
-          "Bio cannot be longer than 500 characters.",
+        message: "Bio cannot be longer than 500 characters.",
       });
 
       return;
     }
 
-    const user = await User.findById(
-      req.userId
-    );
+    /*
+     * Profile photo validation
+     *
+     * The frontend sends the selected image as a Base64
+     * data URL, for example:
+     *
+     * data:image/jpeg;base64,/9j/4AAQSk...
+     */
+
+    if (typeof profilePhoto === "string" && profilePhoto) {
+      const validImagePattern =
+        /^data:image\/(jpeg|jpg|png|webp);base64,/i;
+
+      if (!validImagePattern.test(profilePhoto)) {
+        res.status(400).json({
+          message:
+            "Profile photo must be a JPG, PNG, or WebP image.",
+        });
+
+        return;
+      }
+
+      // Approximate 3 MB maximum Base64 payload.
+      if (profilePhoto.length > 4_000_000) {
+        res.status(400).json({
+          message:
+            "Profile photo is too large. Please choose an image under 3 MB.",
+        });
+
+        return;
+      }
+    }
+
+    const user = await User.findById(req.userId);
 
     if (!user) {
       res.status(404).json({
@@ -293,8 +322,7 @@ export const updateProfile = async (
                 : "",
 
             description:
-              typeof project.description ===
-              "string"
+              typeof project.description === "string"
                 ? project.description.trim()
                 : "",
 

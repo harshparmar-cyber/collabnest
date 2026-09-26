@@ -146,6 +146,9 @@ type ProjectCardProps = {
   onDelete?: () => void;
   onView?: () => void;
   isDeleting?: boolean;
+  ownerName?: string;
+  ownerPhoto?: string;
+  onOwnerClick?: () => void;
 };
 
 type Project = {
@@ -159,6 +162,7 @@ type Project = {
     _id: string;
     name: string;
     email: string;
+    profilePhoto?: string;
   };
   createdAt: string;
   updatedAt: string;
@@ -175,6 +179,9 @@ const ProjectCard = ({
   onDelete,
   onView,
   isDeleting = false,
+  ownerName,
+  ownerPhoto,
+  onOwnerClick,
 }: ProjectCardProps) => {
   return (
     <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
@@ -208,9 +215,31 @@ const ProjectCard = ({
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-        <span className="text-[9px] text-gray-400">
-          Posted recently
-        </span>
+        <div className="min-w-0 flex items-center gap-2">
+          {ownerName && (
+            <button
+              type="button"
+              onClick={onOwnerClick}
+              className="flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 transition hover:bg-blue-50"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-[9px] font-bold text-[#1684ff]">
+                {ownerPhoto ? (
+                  <img
+                    src={ownerPhoto}
+                    alt={ownerName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  ownerName.charAt(0).toUpperCase()
+                )}
+              </span>
+
+              <span className="max-w-[110px] truncate text-[9px] font-semibold text-[#477083]">
+                {ownerName}
+              </span>
+            </button>
+          )}
+        </div>
 
         {isOwner ? (
           <div className="flex items-center gap-2">
@@ -287,6 +316,7 @@ const DashboardPage = () => {
 
   const [userName, setUserName] = useState("User");
   const [currentUserId, setCurrentUserId] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
     null
@@ -319,6 +349,7 @@ const DashboardPage = () => {
 
         setUserName(data.user.name);
         setCurrentUserId(data.user.id);
+        setProfilePhoto(data.user.profilePhoto || "");
       } catch (error) {
         console.error(
           "Failed to fetch current user:",
@@ -512,12 +543,19 @@ const DashboardPage = () => {
 
             <button
               type="button"
+              onClick={() => navigate("/profile")}
               className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
-                {userName
-                  .charAt(0)
-                  .toUpperCase()}
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt={userName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  userName.charAt(0).toUpperCase()
+                )}
               </div>
 
               <span className="hidden text-[13px] font-semibold lg:block">
@@ -880,6 +918,21 @@ const DashboardPage = () => {
                                   .createdBy
                                   ?._id
                               }
+                              ownerName={
+                                project.createdBy?.name
+                              }
+                              ownerPhoto={
+                                project.createdBy?.profilePhoto
+                              }
+                              onOwnerClick={() => {
+                                if (
+                                  project.createdBy?._id
+                                ) {
+                                  navigate(
+                                    `/profile/${project.createdBy._id}`
+                                  );
+                                }
+                              }}
                               onEdit={() =>
                                 handleEditProject(
                                   project
@@ -1010,6 +1063,7 @@ const DashboardPage = () => {
 
                 <button
                   type="button"
+                  onClick={() => navigate("/profile")}
                   className="mt-5 flex h-[45px] w-full items-center justify-center gap-2 rounded-xl bg-[#1684ff] text-[12px] font-bold text-white transition hover:bg-[#0874e8]"
                 >
                   Complete Profile
@@ -1325,31 +1379,48 @@ const DashboardPage = () => {
                   gap-3
                 "
               >
-                <div
-                  className="
-                    flex
-                    h-9
-                    w-9
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-white/20
-                    text-[12px]
-                    font-bold
-                    uppercase
-                  "
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedProject.createdBy?._id) {
+                      setSelectedProject(null);
+                      navigate(
+                        `/profile/${selectedProject.createdBy._id}`
+                      );
+                    }
+                  }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-[12px] font-bold uppercase transition hover:bg-white/30"
                 >
-                  {selectedProject.createdBy?.name?.charAt(0) || "U"}
-                </div>
+                  {selectedProject.createdBy?.profilePhoto ? (
+                    <img
+                      src={selectedProject.createdBy.profilePhoto}
+                      alt={selectedProject.createdBy.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    selectedProject.createdBy?.name?.charAt(0) || "U"
+                  )}
+                </button>
 
-                <div>
+                <div className="min-w-0">
                   <p className="text-[11px] text-white/70">
                     Posted by
                   </p>
 
-                  <p className="text-[13px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedProject.createdBy?._id) {
+                        setSelectedProject(null);
+                        navigate(
+                          `/profile/${selectedProject.createdBy._id}`
+                        );
+                      }
+                    }}
+                    className="truncate text-left text-[13px] font-semibold hover:underline"
+                  >
                     {selectedProject.createdBy?.name || "Unknown user"}
-                  </p>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1549,36 +1620,44 @@ const DashboardPage = () => {
                 </p>
 
                 <div className="mt-2 flex items-center gap-3">
-                  <div
-                    className="
-                      flex
-                      h-10
-                      w-10
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-gradient-to-br
-                      from-[#1684ff]
-                      to-[#0759bd]
-                      text-[12px]
-                      font-bold
-                      uppercase
-                      text-white
-                    "
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedProject.createdBy?._id) {
+                        setSelectedProject(null);
+                        navigate(
+                          `/profile/${selectedProject.createdBy._id}`
+                        );
+                      }
+                    }}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#1684ff] to-[#0759bd] text-[12px] font-bold uppercase text-white"
                   >
-                    {selectedProject.createdBy?.name?.charAt(0) || "U"}
-                  </div>
+                    {selectedProject.createdBy?.profilePhoto ? (
+                      <img
+                        src={selectedProject.createdBy.profilePhoto}
+                        alt={selectedProject.createdBy.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      selectedProject.createdBy?.name?.charAt(0) || "U"
+                    )}
+                  </button>
 
-                  <div>
-                    <p
-                      className="
-                        text-[12px]
-                        font-bold
-                        text-[#102a43]
-                      "
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedProject.createdBy?._id) {
+                          setSelectedProject(null);
+                          navigate(
+                            `/profile/${selectedProject.createdBy._id}`
+                          );
+                        }
+                      }}
+                      className="text-left text-[12px] font-bold text-[#102a43] hover:text-[#1684ff] hover:underline"
                     >
                       {selectedProject.createdBy?.name || "Unknown user"}
-                    </p>
+                    </button>
 
                     <p
                       className="

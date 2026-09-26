@@ -14,6 +14,7 @@ import AuthPage from "./components/AuthPage";
 import DashboardPage from "./components/DashboardPage";
 import PostProjectPage from "./components/PostProjectPage";
 import ExploreProjectsPage from "./components/ExploreProjectsPage";
+import ProfilePage from "./components/ProfilePage";
 
 /* ========================================================= */
 /* LANDING PAGE */
@@ -284,12 +285,22 @@ function AnimatedRoutes() {
         />
 
         <Route
-  path="/explore-projects"
-  element={<ExploreProjectsPage />}
-/>
+          path="/profile"
+          element={<ProfilePage />}
+        />
+
+        <Route
+          path="/profile/:userId"
+          element={<ProfilePage />}
+        />
+
+        <Route
+          path="/explore-projects"
+          element={<ExploreProjectsPage />}
+        />
       </Routes>
 
-      
+
     </AnimatePresence>
   );
 }
