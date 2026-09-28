@@ -532,7 +532,10 @@ const ProjectDetailsModal = ({
 
             <button
               type="button"
-              onClick={onConnect}
+              onClick={() => {
+  console.log("CONNECT BUTTON CLICKED");
+  onConnect();
+}}
               disabled={isConnecting}
               className="
                 flex-1
