@@ -857,19 +857,22 @@ const handleConnect = async () => {
                   }
                 />
 
-                {/* START CONVERSATION */}
+                {/* COLLABORATION REQUESTS */}
 
                 <QuickActionCard
-                  icon={
-                    <MessageCircle
-                      size={23}
-                    />
-                  }
-                  title="Start a Conversation"
-                  description="Chat, discuss and build together."
-                  iconClass="bg-emerald-100 text-emerald-600"
-                  arrowClass="bg-emerald-100 text-emerald-600"
-                />
+  icon={
+    <Users
+      size={23}
+    />
+  }
+  title="Collaboration Requests"
+  description="View and manage students who want to collaborate with you."
+  iconClass="bg-emerald-100 text-emerald-600"
+  arrowClass="bg-emerald-100 text-emerald-600"
+  onClick={() =>
+    navigate("/collaboration-requests")
+  }
+/>
 
               </div>
 
