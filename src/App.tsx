@@ -15,6 +15,7 @@ import DashboardPage from "./components/DashboardPage";
 import PostProjectPage from "./components/PostProjectPage";
 import ExploreProjectsPage from "./components/ExploreProjectsPage";
 import ProfilePage from "./components/ProfilePage";
+import CollaborationRequestsPage from "./components/CollaborationRequestsPage";
 
 /* ========================================================= */
 /* LANDING PAGE */
@@ -298,6 +299,11 @@ function AnimatedRoutes() {
           path="/explore-projects"
           element={<ExploreProjectsPage />}
         />
+
+        <Route
+  path="/collaboration-requests"
+  element={<CollaborationRequestsPage />}
+/>
       </Routes>
 
 
