@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
+import collaborationRoutes from "./routes/collaborationRoutes.js";
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/collaborations", collaborationRoutes);
 
 app.get("/", (_req, res) => {
   res.json({
