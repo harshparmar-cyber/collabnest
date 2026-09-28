@@ -321,6 +321,7 @@ const DashboardPage = () => {
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
     null
   );
+  const [isConnecting, setIsConnecting] = useState(false);
   const [selectedProject, setSelectedProject] =
     useState<Project | null>(null);
 
@@ -474,9 +475,69 @@ const DashboardPage = () => {
     setSelectedProject(project);
   };
 
+  // =====================================================
+// SEND COLLABORATION REQUEST
+// =====================================================
+
+const handleConnect = async () => {
+  if (!selectedProject) return;
+
+  if (!selectedProject.createdBy?._id) {
+    alert("Project owner information is missing.");
+    return;
+  }
+
+  if (selectedProject.createdBy._id === currentUserId) {
+    alert("You cannot send a collaboration request to yourself.");
+    return;
+  }
+
+  setIsConnecting(true);
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/collaborations/projects/${selectedProject._id}/request`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(
+        data.message ||
+          "Failed to send collaboration request."
+      );
+      return;
+    }
+
+    alert(
+      data.message ||
+        "Collaboration request sent successfully!"
+    );
+
+    setSelectedProject(null);
+  } catch (error) {
+    console.error(
+      "Collaboration request error:",
+      error
+    );
+
+    alert(
+      "Unable to connect to the server. Please try again."
+    );
+  } finally {
+    setIsConnecting(false);
+  }
+};
+
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
-
       {/* =====================================================
           TOP NAVBAR
       ===================================================== */}
@@ -1702,31 +1763,38 @@ const DashboardPage = () => {
                 </button>
 
                 <button
-                  type="button"
-                  className="
-                    flex
-                    h-[42px]
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    bg-gradient-to-r
-                    from-[#1684ff]
-                    to-[#0759bd]
-                    px-5
-                    text-[11px]
-                    font-semibold
-                    text-white
-                    shadow-lg
-                    shadow-blue-500/20
-                    transition
-                    hover:-translate-y-[1px]
-                    hover:shadow-xl
-                  "
-                >
-                  <MessageCircle size={15} />
-                  Connect / Collaborate
-                </button>
+  type="button"
+  onClick={handleConnect}
+  disabled={isConnecting}
+  className="
+    flex
+    h-[42px]
+    items-center
+    justify-center
+    gap-2
+    rounded-xl
+    bg-gradient-to-r
+    from-[#1684ff]
+    to-[#0759bd]
+    px-5
+    text-[11px]
+    font-semibold
+    text-white
+    shadow-lg
+    shadow-blue-500/20
+    transition
+    hover:-translate-y-[1px]
+    hover:shadow-xl
+    disabled:cursor-not-allowed
+    disabled:opacity-60
+  "
+>
+  <MessageCircle size={15} />
+
+  {isConnecting
+    ? "Sending Request..."
+    : "Connect & Collaborate"}
+</button>
               </div>
             </div>
           </div>
