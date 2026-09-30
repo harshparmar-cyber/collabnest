@@ -691,13 +691,12 @@ const handleConnect = async () => {
             label="My Collaborations"
           />
 
-          <SidebarItem
-            icon={
-              <MessageCircle size={20} />
-            }
-            label="Messages"
-            badge="2"
-          />
+         <SidebarItem
+  icon={<MessageCircle size={20} />}
+  label="Messages"
+  badge="2"
+  onClick={() => navigate("/messages")}
+/>
 
           <SidebarItem
             icon={<Phone size={20} />}

@@ -16,6 +16,7 @@ import PostProjectPage from "./components/PostProjectPage";
 import ExploreProjectsPage from "./components/ExploreProjectsPage";
 import ProfilePage from "./components/ProfilePage";
 import CollaborationRequestsPage from "./components/CollaborationRequestsPage";
+import MessagesPage from "./components/MessagesPage";
 
 /* ========================================================= */
 /* LANDING PAGE */
@@ -299,6 +300,11 @@ function AnimatedRoutes() {
           path="/explore-projects"
           element={<ExploreProjectsPage />}
         />
+
+        <Route
+  path="/messages"
+  element={<MessagesPage />}
+/>
 
         <Route
   path="/collaboration-requests"
