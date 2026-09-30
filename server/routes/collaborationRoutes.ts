@@ -7,6 +7,7 @@ import {
   getCollaborationRequests,
   acceptCollaborationRequest,
   rejectCollaborationRequest,
+  getMyCollaborationGroups,
 } from "../controllers/collaborationController.js";
 
 const router = Router();
@@ -45,6 +46,12 @@ router.put(
   "/requests/:requestId/accept",
   authMiddleware,
   acceptCollaborationRequest
+);
+
+router.get(
+  "/groups",
+  authMiddleware,
+  getMyCollaborationGroups
 );
 
 /*

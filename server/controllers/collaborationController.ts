@@ -367,3 +367,36 @@ export const rejectCollaborationRequest = async (
     });
   }
 };
+
+export const getMyCollaborationGroups = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({
+        message: "Authentication required.",
+      });
+      return;
+    }
+
+    const groups = await CollaborationGroup.find({
+      members: userId,
+    })
+      .populate("project", "title")
+      .populate("members", "name email profilePhoto")
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json({
+      groups,
+    });
+  } catch (error) {
+    console.error("Get collaboration groups error:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch collaboration groups.",
+    });
+  }
+};
