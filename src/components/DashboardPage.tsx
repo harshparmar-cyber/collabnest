@@ -327,6 +327,24 @@ const DashboardPage = () => {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
+  const handleLogout = async () => {
+  try {
+    await fetch(
+      `${API_URL}/api/auth/logout`,
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+  } catch (error) {
+    console.error("Logout error:", error);
+  } finally {
+    navigate("/auth", {
+      replace: true,
+    });
+  }
+};
+
   // =====================================================
   // FETCH CURRENT USER
   // =====================================================
@@ -716,9 +734,10 @@ const handleConnect = async () => {
           {/* Logout */}
 
           <SidebarItem
-            icon={<LogOut size={20} />}
-            label="Logout"
-          />
+  icon={<LogOut size={20} />}
+  label="Logout"
+  onClick={handleLogout}
+/>
 
         </nav>
       </aside>
