@@ -339,7 +339,7 @@ const DashboardPage = () => {
   } catch (error) {
     console.error("Logout error:", error);
   } finally {
-    navigate("/auth", {
+    navigate("/login", {
       replace: true,
     });
   }

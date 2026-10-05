@@ -16,6 +16,10 @@ interface SendMessagePayload {
   text: string;
 }
 
+interface DeleteMessagePayload {
+  messageId: string;
+}
+
 const getTokenFromCookie = (
   cookieHeader?: string
 ): string | null => {
@@ -36,6 +40,12 @@ const getTokenFromCookie = (
 };
 
 const setupSocket = (io: Server) => {
+  /*
+   * ==========================================
+   * SOCKET AUTHENTICATION
+   * ==========================================
+   */
+
   io.use((socket: AuthenticatedSocket, next) => {
     try {
       const cookieHeader =
@@ -76,185 +86,319 @@ const setupSocket = (io: Server) => {
     }
   });
 
-  io.on("connection", (socket: AuthenticatedSocket) => {
-    console.log(
-      `🔌 User connected to Socket.IO: ${socket.userId}`
-    );
+  /*
+   * ==========================================
+   * CONNECTION
+   * ==========================================
+   */
 
-    /*
-     * ==============================
-     * JOIN COLLABORATION GROUP
-     * ==============================
-     */
+  io.on(
+    "connection",
+    (socket: AuthenticatedSocket) => {
+      console.log(
+        `🔌 User connected to Socket.IO: ${socket.userId}`
+      );
 
-    socket.on(
-      "join_group",
-      async ({ groupId }: JoinGroupPayload) => {
-        try {
-          const userId = socket.userId;
+      /*
+       * ========================================
+       * JOIN COLLABORATION GROUP
+       * ========================================
+       */
 
-          if (!userId) {
-            socket.emit("socket_error", {
-              message: "Authentication required.",
+      socket.on(
+        "join_group",
+        async ({
+          groupId,
+        }: JoinGroupPayload) => {
+          try {
+            const userId = socket.userId;
+
+            if (!userId) {
+              socket.emit("socket_error", {
+                message:
+                  "Authentication required.",
+              });
+              return;
+            }
+
+            if (!groupId) {
+              socket.emit("socket_error", {
+                message:
+                  "Collaboration group ID is required.",
+              });
+              return;
+            }
+
+            const group =
+              await CollaborationGroup.findOne({
+                _id: groupId,
+                members: userId,
+              });
+
+            if (!group) {
+              socket.emit("socket_error", {
+                message:
+                  "You are not a member of this collaboration group.",
+              });
+              return;
+            }
+
+            socket.join(groupId);
+
+            console.log(
+              `👥 User ${userId} joined group ${groupId}`
+            );
+
+            socket.emit("group_joined", {
+              groupId,
             });
-            return;
-          }
+          } catch (error) {
+            console.error(
+              "Join group socket error:",
+              error
+            );
 
-          if (!groupId) {
-            socket.emit("socket_error", {
-              message: "Collaboration group ID is required.",
-            });
-            return;
-          }
-
-          const group =
-            await CollaborationGroup.findOne({
-              _id: groupId,
-              members: userId,
-            });
-
-          if (!group) {
             socket.emit("socket_error", {
               message:
-                "You are not a member of this collaboration group.",
+                "Failed to join collaboration group.",
             });
-            return;
           }
-
-          socket.join(groupId);
-
-          console.log(
-            `👥 User ${userId} joined group ${groupId}`
-          );
-
-          socket.emit("group_joined", {
-            groupId,
-          });
-        } catch (error) {
-          console.error(
-            "Join group socket error:",
-            error
-          );
-
-          socket.emit("socket_error", {
-            message: "Failed to join collaboration group.",
-          });
         }
-      }
-    );
+      );
 
-    /*
-     * ==============================
-     * SEND MESSAGE
-     * ==============================
-     */
+      /*
+       * ========================================
+       * SEND MESSAGE
+       * ========================================
+       */
 
-    socket.on(
-      "send_message",
-      async ({
-        groupId,
-        text,
-      }: SendMessagePayload) => {
-        try {
-          const userId = socket.userId;
+      socket.on(
+        "send_message",
+        async ({
+          groupId,
+          text,
+        }: SendMessagePayload) => {
+          try {
+            const userId = socket.userId;
 
-          if (!userId) {
-            socket.emit("socket_error", {
-              message: "Authentication required.",
-            });
-            return;
-          }
+            if (!userId) {
+              socket.emit("socket_error", {
+                message:
+                  "Authentication required.",
+              });
+              return;
+            }
 
-          const trimmedText = text?.trim();
+            const trimmedText = text?.trim();
 
-          if (!trimmedText) {
-            return;
-          }
+            if (!trimmedText) {
+              return;
+            }
 
-          if (trimmedText.length > 2000) {
-            socket.emit("socket_error", {
-              message:
-                "Message cannot exceed 2000 characters.",
-            });
-            return;
-          }
+            if (trimmedText.length > 2000) {
+              socket.emit("socket_error", {
+                message:
+                  "Message cannot exceed 2000 characters.",
+              });
+              return;
+            }
 
-          /*
-           * Make sure the user actually belongs
-           * to this collaboration group.
-           */
+            /*
+             * Verify group membership.
+             */
 
-          const group =
-            await CollaborationGroup.findOne({
-              _id: groupId,
-              members: userId,
-            });
+            const group =
+              await CollaborationGroup.findOne({
+                _id: groupId,
+                members: userId,
+              });
 
-          if (!group) {
-            socket.emit("socket_error", {
-              message:
-                "You are not a member of this collaboration group.",
-            });
-            return;
-          }
+            if (!group) {
+              socket.emit("socket_error", {
+                message:
+                  "You are not a member of this collaboration group.",
+              });
+              return;
+            }
 
-          /*
-           * Save message to MongoDB.
-           */
+            /*
+             * Save message.
+             */
 
-          const newMessage = await Message.create({
-            group: groupId,
-            sender: userId,
-            text: trimmedText,
-          });
+            const newMessage =
+              await Message.create({
+                group: groupId,
+                sender: userId,
+                text: trimmedText,
+              });
 
-          /*
-           * Get sender information so the frontend
-           * can immediately display their name/photo.
-           */
+            /*
+             * Populate sender information.
+             */
 
-          const populatedMessage =
-            await Message.findById(newMessage._id)
-              .populate(
+            const populatedMessage =
+              await Message.findById(
+                newMessage._id
+              ).populate(
                 "sender",
                 "name email profilePhoto"
               );
 
-          /*
-           * Send the new message to EVERYONE
-           * currently inside this group room.
-           */
+            /*
+             * Send to everyone in group.
+             */
 
-          io.to(groupId).emit(
-            "new_message",
-            populatedMessage
-          );
-        } catch (error) {
-          console.error(
-            "Send message socket error:",
-            error
-          );
+            io.to(groupId).emit(
+              "new_message",
+              populatedMessage
+            );
+          } catch (error) {
+            console.error(
+              "Send message socket error:",
+              error
+            );
 
-          socket.emit("socket_error", {
-            message: "Failed to send message.",
-          });
+            socket.emit("socket_error", {
+              message:
+                "Failed to send message.",
+            });
+          }
         }
-      }
-    );
-
-    /*
-     * ==============================
-     * DISCONNECT
-     * ==============================
-     */
-
-    socket.on("disconnect", (reason) => {
-      console.log(
-        `🔌 User disconnected: ${socket.userId}`,
-        reason
       );
-    });
-  });
+
+      /*
+       * ========================================
+       * DELETE MESSAGE
+       * ========================================
+       */
+
+      socket.on(
+        "delete_message",
+        async ({
+          messageId,
+        }: DeleteMessagePayload) => {
+          try {
+            const userId = socket.userId;
+
+            if (!userId) {
+              socket.emit("socket_error", {
+                message:
+                  "Authentication required.",
+              });
+              return;
+            }
+
+            if (!messageId) {
+              socket.emit("socket_error", {
+                message:
+                  "Message ID is required.",
+              });
+              return;
+            }
+
+            /*
+             * Find message.
+             */
+
+            const message =
+              await Message.findById(messageId);
+
+            if (!message) {
+              socket.emit("socket_error", {
+                message:
+                  "Message not found.",
+              });
+              return;
+            }
+
+            /*
+             * Only the sender can delete
+             * their own message.
+             */
+
+            if (
+              message.sender.toString() !==
+              userId
+            ) {
+              socket.emit("socket_error", {
+                message:
+                  "You can only delete your own messages.",
+              });
+              return;
+            }
+
+            const groupId =
+              message.group.toString();
+
+            /*
+             * Verify group membership.
+             */
+
+            const group =
+              await CollaborationGroup.findOne({
+                _id: groupId,
+                members: userId,
+              });
+
+            if (!group) {
+              socket.emit("socket_error", {
+                message:
+                  "You are not a member of this collaboration group.",
+              });
+              return;
+            }
+
+            /*
+             * Delete message.
+             */
+
+            await Message.findByIdAndDelete(
+              messageId
+            );
+
+            /*
+             * Tell everyone in the group
+             * to remove the message.
+             */
+
+            io.to(groupId).emit(
+              "message_deleted",
+              {
+                messageId,
+                groupId,
+              }
+            );
+          } catch (error) {
+            console.error(
+              "Delete message socket error:",
+              error
+            );
+
+            socket.emit("socket_error", {
+              message:
+                "Failed to delete message.",
+            });
+          }
+        }
+      );
+
+      /*
+       * ========================================
+       * DISCONNECT
+       * ========================================
+       */
+
+      socket.on(
+        "disconnect",
+        (reason) => {
+          console.log(
+            `🔌 User disconnected: ${socket.userId}`,
+            reason
+          );
+        }
+      );
+    }
+  );
 };
 
 export default setupSocket;
