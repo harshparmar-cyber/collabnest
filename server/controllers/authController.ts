@@ -4,6 +4,24 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { AuthRequest } from "../middleware/authMiddleware.js";
 
+/* ========================================================= */
+/* COOKIE CONFIGURATION */
+/* ========================================================= */
+
+const isSecureCookie =
+  process.env.CLIENT_URL?.startsWith("https://") ?? false;
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isSecureCookie,
+  sameSite: isSecureCookie ? ("none" as const) : ("lax" as const),
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+/* ========================================================= */
+/* CREATE JWT */
+/* ========================================================= */
+
 const createToken = (userId: string): string => {
   const secret = process.env.JWT_SECRET;
 
@@ -11,46 +29,67 @@ const createToken = (userId: string): string => {
     throw new Error("JWT_SECRET is not defined in .env");
   }
 
-  return jwt.sign({ userId }, secret, {
-    expiresIn: "7d",
-  });
+  return jwt.sign(
+    { userId },
+    secret,
+    {
+      expiresIn: "7d",
+    }
+  );
 };
+
+/* ========================================================= */
+/* SIGNUP */
+/* ========================================================= */
 
 export const signup = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { name, email, password } = req.body;
+    const {
+      name,
+      email,
+      password,
+    } = req.body;
 
     if (!name || !email || !password) {
       res.status(400).json({
-        message: "Name, email and password are required.",
+        message:
+          "Name, email and password are required.",
       });
+
       return;
     }
 
     if (password.length < 6) {
       res.status(400).json({
-        message: "Password must be at least 6 characters.",
+        message:
+          "Password must be at least 6 characters.",
       });
+
       return;
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail =
+      email.toLowerCase().trim();
 
-    const existingUser = await User.findOne({
-      email: normalizedEmail,
-    });
+    const existingUser =
+      await User.findOne({
+        email: normalizedEmail,
+      });
 
     if (existingUser) {
       res.status(409).json({
-        message: "An account with this email already exists.",
+        message:
+          "An account with this email already exists.",
       });
+
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword =
+      await bcrypt.hash(password, 12);
 
     const user = await User.create({
       name: name.trim(),
@@ -58,18 +97,20 @@ export const signup = async (
       password: hashedPassword,
     });
 
-    const token = createToken(user._id.toString());
+    const token = createToken(
+      user._id.toString()
+    );
 
-   res.cookie("token", token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite:
-    process.env.NODE_ENV === "production" ? "none" : "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-});
+    res.cookie(
+      "token",
+      token,
+      cookieOptions
+    );
 
     res.status(201).json({
-      message: "Account created successfully.",
+      message:
+        "Account created successfully.",
+
       user: {
         id: user._id,
         name: user.name,
@@ -77,29 +118,43 @@ export const signup = async (
       },
     });
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error(
+      "Signup error:",
+      error
+    );
 
     res.status(500).json({
-      message: "Something went wrong while creating the account.",
+      message:
+        "Something went wrong while creating the account.",
     });
   }
 };
+
+/* ========================================================= */
+/* LOGIN */
+/* ========================================================= */
 
 export const login = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const {
+      email,
+      password,
+    } = req.body;
 
     if (!email || !password) {
       res.status(400).json({
-        message: "Email and password are required.",
+        message:
+          "Email and password are required.",
       });
+
       return;
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail =
+      email.toLowerCase().trim();
 
     const user = await User.findOne({
       email: normalizedEmail,
@@ -107,35 +162,56 @@ export const login = async (
 
     if (!user) {
       res.status(401).json({
-        message: "Invalid email or password.",
+        message:
+          "Invalid email or password.",
       });
+
       return;
     }
 
-    const passwordMatches = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const passwordMatches =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!passwordMatches) {
       res.status(401).json({
-        message: "Invalid email or password.",
+        message:
+          "Invalid email or password.",
       });
+
       return;
     }
 
-    const token = createToken(user._id.toString());
+    const token = createToken(
+      user._id.toString()
+    );
 
-    res.cookie("token", token, {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite:
-    process.env.NODE_ENV === "production" ? "none" : "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-});
+    /*
+     * Important:
+     *
+     * Production:
+     * secure = true
+     * sameSite = none
+     *
+     * Local development:
+     * secure = false
+     * sameSite = lax
+     *
+     * This is determined from CLIENT_URL.
+     */
+
+    res.cookie(
+      "token",
+      token,
+      cookieOptions
+    );
 
     res.status(200).json({
-      message: "Login successful.",
+      message:
+        "Login successful.",
+
       user: {
         id: user._id,
         name: user.name,
@@ -143,13 +219,21 @@ export const login = async (
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error(
+      "Login error:",
+      error
+    );
 
     res.status(500).json({
-      message: "Something went wrong while logging in.",
+      message:
+        "Something went wrong while logging in.",
     });
   }
 };
+
+/* ========================================================= */
+/* GET CURRENT USER */
+/* ========================================================= */
 
 export const getCurrentUser = async (
   req: AuthRequest,
@@ -158,19 +242,22 @@ export const getCurrentUser = async (
   try {
     if (!req.userId) {
       res.status(401).json({
-        message: "Authentication required.",
+        message:
+          "Authentication required.",
       });
 
       return;
     }
 
-    const user = await User.findById(
-      req.userId
-    ).select("-password");
+    const user =
+      await User.findById(
+        req.userId
+      ).select("-password");
 
     if (!user) {
       res.status(404).json({
-        message: "User not found.",
+        message:
+          "User not found.",
       });
 
       return;
@@ -195,10 +282,15 @@ export const getCurrentUser = async (
     );
 
     res.status(500).json({
-      message: "Something went wrong.",
+      message:
+        "Something went wrong.",
     });
   }
 };
+
+/* ========================================================= */
+/* UPDATE PROFILE */
+/* ========================================================= */
 
 export const updateProfile = async (
   req: AuthRequest,
@@ -207,7 +299,8 @@ export const updateProfile = async (
   try {
     if (!req.userId) {
       res.status(401).json({
-        message: "Authentication required.",
+        message:
+          "Authentication required.",
       });
 
       return;
@@ -223,7 +316,8 @@ export const updateProfile = async (
 
     if (!name || !name.trim()) {
       res.status(400).json({
-        message: "Name is required.",
+        message:
+          "Name is required.",
       });
 
       return;
@@ -231,7 +325,8 @@ export const updateProfile = async (
 
     if (name.trim().length > 60) {
       res.status(400).json({
-        message: "Name cannot be longer than 60 characters.",
+        message:
+          "Name cannot be longer than 60 characters.",
       });
 
       return;
@@ -242,26 +337,29 @@ export const updateProfile = async (
       bio.length > 500
     ) {
       res.status(400).json({
-        message: "Bio cannot be longer than 500 characters.",
+        message:
+          "Bio cannot be longer than 500 characters.",
       });
 
       return;
     }
 
-    /*
-     * Profile photo validation
-     *
-     * The frontend sends the selected image as a Base64
-     * data URL, for example:
-     *
-     * data:image/jpeg;base64,/9j/4AAQSk...
-     */
+    /* ===================================================== */
+    /* PROFILE PHOTO VALIDATION */
+    /* ===================================================== */
 
-    if (typeof profilePhoto === "string" && profilePhoto) {
+    if (
+      typeof profilePhoto === "string" &&
+      profilePhoto
+    ) {
       const validImagePattern =
         /^data:image\/(jpeg|jpg|png|webp);base64,/i;
 
-      if (!validImagePattern.test(profilePhoto)) {
+      if (
+        !validImagePattern.test(
+          profilePhoto
+        )
+      ) {
         res.status(400).json({
           message:
             "Profile photo must be a JPG, PNG, or WebP image.",
@@ -270,8 +368,15 @@ export const updateProfile = async (
         return;
       }
 
-      // Approximate 3 MB maximum Base64 payload.
-      if (profilePhoto.length > 4_000_000) {
+      /*
+       * Approximate 3 MB maximum
+       * Base64 payload.
+       */
+
+      if (
+        profilePhoto.length >
+        4_000_000
+      ) {
         res.status(400).json({
           message:
             "Profile photo is too large. Please choose an image under 3 MB.",
@@ -281,76 +386,124 @@ export const updateProfile = async (
       }
     }
 
-    const user = await User.findById(req.userId);
+    /* ===================================================== */
+    /* FIND USER */
+    /* ===================================================== */
+
+    const user =
+      await User.findById(
+        req.userId
+      );
 
     if (!user) {
       res.status(404).json({
-        message: "User not found.",
+        message:
+          "User not found.",
       });
 
       return;
     }
 
-    user.name = name.trim();
+    /* ===================================================== */
+    /* UPDATE BASIC INFO */
+    /* ===================================================== */
+
+    user.name =
+      name.trim();
 
     user.bio =
       typeof bio === "string"
         ? bio.trim()
         : "";
 
-    user.skills = Array.isArray(skills)
-      ? skills
-          .filter(
-            (skill): skill is string =>
-              typeof skill === "string"
-          )
-          .map((skill) => skill.trim())
-          .filter(Boolean)
-      : [];
+    /* ===================================================== */
+    /* UPDATE SKILLS */
+    /* ===================================================== */
+
+    user.skills =
+      Array.isArray(skills)
+        ? skills
+            .filter(
+              (
+                skill
+              ): skill is string =>
+                typeof skill ===
+                "string"
+            )
+            .map(
+              (skill) =>
+                skill.trim()
+            )
+            .filter(Boolean)
+        : [];
+
+    /* ===================================================== */
+    /* UPDATE PROFILE PHOTO */
+    /* ===================================================== */
 
     user.profilePhoto =
-      typeof profilePhoto === "string"
+      typeof profilePhoto ===
+      "string"
         ? profilePhoto.trim()
         : "";
 
+    /* ===================================================== */
+    /* UPDATE PORTFOLIO */
+    /* ===================================================== */
+
     user.portfolio =
       Array.isArray(portfolio)
-        ? portfolio.map((project) => ({
-            title:
-              typeof project.title === "string"
-                ? project.title.trim()
-                : "",
+        ? portfolio.map(
+            (project) => ({
+              title:
+                typeof project.title ===
+                "string"
+                  ? project.title.trim()
+                  : "",
 
-            description:
-              typeof project.description === "string"
-                ? project.description.trim()
-                : "",
+              description:
+                typeof project.description ===
+                "string"
+                  ? project.description.trim()
+                  : "",
 
-            link:
-              typeof project.link === "string"
-                ? project.link.trim()
-                : "",
+              link:
+                typeof project.link ===
+                "string"
+                  ? project.link.trim()
+                  : "",
 
-            image:
-              typeof project.image === "string"
-                ? project.image.trim()
-                : "",
-          }))
+              image:
+                typeof project.image ===
+                "string"
+                  ? project.image.trim()
+                  : "",
+            })
+          )
         : [];
 
     await user.save();
 
+    /* ===================================================== */
+    /* RESPONSE */
+    /* ===================================================== */
+
     res.status(200).json({
-      message: "Profile updated successfully.",
+      message:
+        "Profile updated successfully.",
+
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         bio: user.bio,
         skills: user.skills,
-        profilePhoto: user.profilePhoto,
-        portfolio: user.portfolio,
-        createdAt: user.createdAt,
+        profilePhoto:
+          user.profilePhoto,
+        portfolio:
+          user.portfolio,
+        createdAt:
+          user.createdAt,
       },
     });
   } catch (error) {
@@ -366,20 +519,27 @@ export const updateProfile = async (
   }
 };
 
+/* ========================================================= */
+/* GET OTHER USER PROFILE */
+/* ========================================================= */
+
 export const getUserProfile = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const { id } =
+      req.params;
 
-    const user = await User.findById(id).select(
-      "-password -email"
-    );
+    const user =
+      await User.findById(id).select(
+        "-password -email"
+      );
 
     if (!user) {
       res.status(404).json({
-        message: "User profile not found.",
+        message:
+          "User profile not found.",
       });
 
       return;
@@ -391,9 +551,12 @@ export const getUserProfile = async (
         name: user.name,
         bio: user.bio,
         skills: user.skills,
-        profilePhoto: user.profilePhoto,
-        portfolio: user.portfolio,
-        createdAt: user.createdAt,
+        profilePhoto:
+          user.profilePhoto,
+        portfolio:
+          user.portfolio,
+        createdAt:
+          user.createdAt,
       },
     });
   } catch (error) {
@@ -409,29 +572,44 @@ export const getUserProfile = async (
   }
 };
 
+/* ========================================================= */
+/* LOGOUT */
+/* ========================================================= */
+
 export const logout = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite:
-        process.env.NODE_ENV === "production"
+    /*
+     * The clearCookie options MUST match
+     * the cookie options used during login.
+     */
+
+    res.clearCookie(
+      "token",
+      {
+        httpOnly: true,
+        secure: isSecureCookie,
+        sameSite: isSecureCookie
           ? "none"
           : "lax",
-    });
+      }
+    );
 
     res.status(200).json({
-      message: "Logout successful.",
+      message:
+        "Logout successful.",
     });
   } catch (error) {
-    console.error("Logout error:", error);
+    console.error(
+      "Logout error:",
+      error
+    );
 
     res.status(500).json({
-      message: "Something went wrong while logging out.",
+      message:
+        "Something went wrong while logging out.",
     });
   }
 };
-
