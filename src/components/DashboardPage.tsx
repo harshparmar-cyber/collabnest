@@ -5,6 +5,7 @@ import {
   FilePlus2,
   Home,
   LogOut,
+  Menu,
   MessageCircle,
   Mic,
   Phone,
@@ -184,7 +185,7 @@ const ProjectCard = ({
   onOwnerClick,
 }: ProjectCardProps) => {
   return (
-    <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
+    <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md sm:p-5">
       <div className="flex gap-4">
         <div
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconClass}`}
@@ -322,10 +323,16 @@ const DashboardPage = () => {
     null
   );
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedProject, setSelectedProject] =
     useState<Project | null>(null);
 
   const API_URL = import.meta.env.VITE_API_URL;
+
+  const navigateFromMenu = (path: string) => {
+    setIsMobileMenuOpen(false);
+    navigate(path);
+  };
 
   const handleLogout = async () => {
   try {
@@ -563,9 +570,19 @@ const handleConnect = async () => {
       <header className="fixed left-0 right-0 top-0 z-50 h-[70px] bg-gradient-to-r from-[#073b88] to-[#0b4da5] text-white shadow-lg">
         <div className="flex h-full items-center">
 
+          {/* Mobile menu button */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white transition hover:bg-white/10 md:hidden"
+            aria-label="Open navigation menu"
+          >
+            <Menu size={22} />
+          </button>
+
           {/* Logo */}
 
-          <div className="flex w-[240px] shrink-0 items-center gap-3 px-7">
+          <div className="flex shrink-0 items-center gap-2.5 px-2 md:w-[240px] md:gap-3 md:px-7">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff] shadow-lg">
               <Users
                 size={23}
@@ -583,7 +600,7 @@ const handleConnect = async () => {
 
           {/* Search */}
 
-          <div className="flex flex-1 items-center justify-center px-5">
+          <div className="hidden flex-1 items-center justify-center px-5 md:flex">
             <div className="flex h-[44px] w-full max-w-[580px] items-center gap-3 rounded-full bg-white/10 px-5 backdrop-blur-md">
               <Search
                 size={19}
@@ -607,7 +624,7 @@ const handleConnect = async () => {
 
           {/* Right side */}
 
-          <div className="flex items-center gap-4 px-6">
+          <div className="ml-auto flex items-center gap-1.5 px-2 md:gap-4 md:px-6">
 
             <button
               type="button"
@@ -623,9 +640,9 @@ const handleConnect = async () => {
             <button
               type="button"
               onClick={() => navigate("/profile")}
-              className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
+              className="flex items-center gap-2 rounded-full px-1.5 py-1 transition hover:bg-white/10 md:gap-3 md:px-2"
             >
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[12px] font-bold md:h-10 md:w-10 md:text-[13px]">
                 {profilePhoto ? (
                   <img
                     src={profilePhoto}
@@ -743,14 +760,162 @@ const handleConnect = async () => {
       </aside>
 
       {/* =====================================================
+          MOBILE NAVIGATION DRAWER
+      ===================================================== */}
+
+      {isMobileMenuOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Close navigation menu"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 top-[70px] z-[55] bg-black/40 backdrop-blur-[1px] md:hidden"
+          />
+
+          <aside
+            className="fixed bottom-0 left-0 top-[70px] z-[60] flex w-[285px] flex-col overflow-y-auto bg-gradient-to-b from-[#073b88] to-[#062f70] text-white shadow-2xl md:hidden"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div>
+                <p className="text-[15px] font-bold">Navigation</p>
+                <p className="mt-0.5 text-[10px] text-blue-200">CollabNest workspace</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-blue-100 transition hover:bg-white/10 hover:text-white"
+                aria-label="Close navigation menu"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <nav className="flex-1 px-3 py-5">
+              <SidebarItem
+                icon={<Home size={20} />}
+                label="Dashboard"
+                active
+                onClick={() => navigateFromMenu("/dashboard")}
+              />
+              <SidebarItem
+                icon={<BriefcaseBusiness size={20} />}
+                label="Find Projects"
+                onClick={() => navigateFromMenu("/explore-projects")}
+              />
+              <SidebarItem
+                icon={<Plus size={21} />}
+                label="Post a Project"
+                onClick={() => navigateFromMenu("/post-project")}
+              />
+              <SidebarItem
+                icon={<Users size={20} />}
+                label="My Collaborations"
+              />
+              <SidebarItem
+                icon={<MessageCircle size={20} />}
+                label="Messages"
+                badge="2"
+                onClick={() => navigateFromMenu("/messages")}
+              />
+              <SidebarItem
+                icon={<Phone size={20} />}
+                label="Calls"
+              />
+              <SidebarItem
+                icon={<Mic size={20} />}
+                label="Interview"
+              />
+              <SidebarItem
+                icon={<Settings size={20} />}
+                label="Settings"
+              />
+
+              <div className="my-4 h-px bg-white/10" />
+
+              <SidebarItem
+                icon={<LogOut size={20} />}
+                label="Logout"
+                onClick={handleLogout}
+              />
+            </nav>
+          </aside>
+        </>
+      )}
+
+      {/* =====================================================
+          MOBILE BOTTOM NAVIGATION
+      ===================================================== */}
+
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-[68px] items-center justify-around border-t border-blue-100 bg-white/95 px-2 shadow-[0_-8px_25px_rgba(20,75,130,0.08)] backdrop-blur-md md:hidden">
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
+          className="flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[#1684ff]"
+        >
+          <Home size={20} />
+          <span className="text-[9px] font-bold">Home</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/explore-projects")}
+          className="flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-[#1684ff]"
+        >
+          <BriefcaseBusiness size={20} />
+          <span className="text-[9px] font-semibold">Projects</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/post-project")}
+          className="-mt-7 flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-full border-4 border-[#f5f9ff] bg-[#1684ff] text-white shadow-lg shadow-blue-500/25"
+          aria-label="Post a project"
+        >
+          <Plus size={23} />
+          <span className="text-[8px] font-bold">Post</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/messages")}
+          className="relative flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-[#1684ff]"
+        >
+          <MessageCircle size={20} />
+          <span className="text-[9px] font-semibold">Messages</span>
+          <span className="absolute right-1 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1684ff] px-1 text-[8px] font-bold text-white">
+            2
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/profile")}
+          className="flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-[#1684ff]"
+        >
+          <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-[8px] font-bold text-[#1684ff]">
+            {profilePhoto ? (
+              <img
+                src={profilePhoto}
+                alt={userName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              userName.charAt(0).toUpperCase()
+            )}
+          </div>
+          <span className="text-[9px] font-semibold">Profile</span>
+        </button>
+      </nav>
+
+      {/* =====================================================
           MAIN CONTENT
       ===================================================== */}
 
-      <main className="h-screen overflow-y-auto pt-[70px] md:ml-[240px]">
+      <main className="h-screen overflow-y-auto pb-[78px] pt-[70px] md:ml-[240px] md:pb-0">
 
-        <div className="mx-auto max-w-[1500px] p-5 md:p-7">
+        <div className="mx-auto max-w-[1500px] p-4 sm:p-5 md:p-7">
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="grid gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
 
             {/* =================================================
                 LEFT CONTENT
@@ -762,7 +927,7 @@ const handleConnect = async () => {
                   WELCOME BANNER
               ================================================= */}
 
-              <div className="relative min-h-[270px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-[#eaf5ff] via-[#dceeff] to-[#c9e4ff] p-7 shadow-sm">
+              <div className="relative min-h-[320px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-[#eaf5ff] via-[#dceeff] to-[#c9e4ff] p-5 shadow-sm sm:min-h-[300px] sm:p-6 md:min-h-[270px] md:p-7">
 
                 {/* Background shapes */}
 
@@ -774,13 +939,13 @@ const handleConnect = async () => {
 
                 <div className="relative z-20 max-w-[540px]">
 
-                  <h1 className="text-[30px] font-bold leading-tight tracking-[-1px] text-[#103b76] md:text-[34px]">
+                  <h1 className="max-w-[290px] text-[27px] font-bold leading-tight tracking-[-1px] text-[#103b76] sm:text-[30px] md:max-w-none md:text-[34px]">
                     Welcome back,{" "}
                     {userName.split(" ")[0]}!{" "}
                     <span>👋</span>
                   </h1>
 
-                  <p className="mt-3 max-w-[520px] text-[14px] leading-6 text-[#315f96]">
+                  <p className="mt-3 max-w-[330px] text-[13px] leading-6 text-[#315f96] sm:text-[14px] md:max-w-[520px]">
                     Great to see you again!
                     Find collaborators,
                     explore projects!
@@ -788,7 +953,7 @@ const handleConnect = async () => {
 
                   {/* Search */}
 
-                  <div className="mt-6 flex h-[50px] w-full max-w-[520px] items-center gap-3 rounded-full bg-white px-4 shadow-md">
+                  <div className="mt-5 flex h-[48px] w-full max-w-[520px] items-center gap-2 rounded-full bg-white px-3 shadow-md sm:mt-6 sm:gap-3 sm:px-4">
 
                     <Search
                       size={20}
@@ -821,17 +986,11 @@ const handleConnect = async () => {
 
                 {/* STUDENTS IMAGE */}
 
-                <div className="pointer-events-none absolute bottom-0 right-[-20px] z-10 flex h-[165px] w-[35%] items-end justify-end">
+                <div className="pointer-events-none absolute bottom-0 right-[-8px] z-10 flex h-[115px] w-[48%] items-end justify-end sm:h-[140px] sm:w-[40%] md:right-[-20px] md:h-[165px] md:w-[35%]">
                   <img
                     src={students}
                     alt="Students collaborating"
-                    className="
-      h-full
-      w-auto
-      max-w-none
-      object-contain
-      object-right-bottom
-    "
+                    className="h-full w-auto max-w-none object-contain object-right-bottom"
                   />
                 </div>
 
@@ -841,7 +1000,7 @@ const handleConnect = async () => {
                   QUICK ACTIONS
               ================================================= */}
 
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:mt-6 md:grid-cols-3 md:gap-4">
 
                 {/* POST PROJECT */}
 
@@ -940,7 +1099,7 @@ const handleConnect = async () => {
                 ================================================= */}
 
                 {projects.length > 0 ? (
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
 
                     {projects
                       .slice(0, 4)
@@ -1115,7 +1274,7 @@ const handleConnect = async () => {
                   PROFILE COMPLETION
               ================================================= */}
 
-              <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
 
                 <h2 className="text-[17px] font-bold text-[#123d78]">
                   Profile Completion
@@ -1160,7 +1319,7 @@ const handleConnect = async () => {
                   SUGGESTED COLLABORATORS
               ================================================= */}
 
-              <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
 
                 <div className="flex items-center justify-between">
 
@@ -1249,7 +1408,7 @@ const handleConnect = async () => {
                   RECENT ACTIVITY
               ================================================= */}
 
-              <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
 
                 <div className="flex items-center justify-between">
 
@@ -1322,31 +1481,11 @@ const handleConnect = async () => {
 
       {selectedProject && (
         <div
-          className="
-            fixed
-            inset-0
-            z-[100]
-            flex
-            items-center
-            justify-center
-            bg-black/45
-            px-4
-            backdrop-blur-sm
-          "
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-4"
           onClick={() => setSelectedProject(null)}
         >
           <div
-            className="
-              relative
-              w-full
-              max-w-[620px]
-              overflow-hidden
-              rounded-[24px]
-              border
-              border-blue-100
-              bg-white
-              shadow-[0_25px_80px_rgba(0,0,0,0.20)]
-            "
+            className="relative max-h-[94vh] w-full max-w-[620px] overflow-hidden rounded-t-[24px] border border-blue-100 bg-white shadow-[0_25px_80px_rgba(0,0,0,0.20)] sm:max-h-[90vh] sm:rounded-[24px]"
             onClick={(event) => event.stopPropagation()}
           >
             {/* Blue header */}
@@ -1358,9 +1497,12 @@ const handleConnect = async () => {
                 from-[#0b5fc7]
                 via-[#1684ff]
                 to-[#5aa9f5]
-                px-6
-                pb-7
-                pt-6
+                px-5
+                pb-6
+                pt-5
+                sm:px-6
+                sm:pb-7
+                sm:pt-6
                 text-white
               "
             >
@@ -1440,11 +1582,11 @@ const handleConnect = async () => {
                   z-10
                   max-w-[500px]
                   pr-10
-                  text-[24px]
+                  text-[22px]
                   font-bold
                   leading-tight
                   tracking-[-0.5px]
-                  md:text-[28px]
+                  sm:text-[26px] md:text-[28px]
                 "
               >
                 {selectedProject.title}
@@ -1508,7 +1650,7 @@ const handleConnect = async () => {
             </div>
 
             {/* Modal content */}
-            <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
+            <div className="max-h-[64vh] overflow-y-auto px-5 py-5 sm:max-h-[60vh] sm:px-6 sm:py-6">
               {/* Description */}
               <div>
                 <div className="mb-2 flex items-center gap-2">
@@ -1553,7 +1695,7 @@ const handleConnect = async () => {
               </div>
 
               {/* Project information */}
-              <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div
                   className="
                     rounded-xl
