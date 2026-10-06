@@ -10,6 +10,10 @@ import {
   getMyCollaborationGroups,
 } from "../controllers/collaborationController.js";
 
+import {
+  getGroupMessages,
+} from "../controllers/messageController.js";
+
 const router = Router();
 
 /*
@@ -48,12 +52,6 @@ router.put(
   acceptCollaborationRequest
 );
 
-router.get(
-  "/groups",
-  authMiddleware,
-  getMyCollaborationGroups
-);
-
 /*
 |--------------------------------------------------------------------------
 | Reject collaboration request
@@ -64,6 +62,30 @@ router.put(
   "/requests/:requestId/reject",
   authMiddleware,
   rejectCollaborationRequest
+);
+
+/*
+|--------------------------------------------------------------------------
+| Get my collaboration groups
+|--------------------------------------------------------------------------
+| GET /api/collaborations/groups
+*/
+router.get(
+  "/groups",
+  authMiddleware,
+  getMyCollaborationGroups
+);
+
+/*
+|--------------------------------------------------------------------------
+| Get previous messages of a collaboration group
+|--------------------------------------------------------------------------
+| GET /api/collaborations/groups/:groupId/messages
+*/
+router.get(
+  "/groups/:groupId/messages",
+  authMiddleware,
+  getGroupMessages
 );
 
 export default router;
