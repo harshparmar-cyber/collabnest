@@ -14,9 +14,20 @@ const CLOUDINARY_CLOUD_NAME =
 const CLOUDINARY_UPLOAD_PRESET =
   import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
+
+console.log("Cloudinary Cloud Name:", CLOUDINARY_CLOUD_NAME);
+console.log("Cloudinary Upload Preset:", CLOUDINARY_UPLOAD_PRESET);
+
 export const uploadToCloudinary = async (
   file: File
 ): Promise<CloudinaryUploadResponse> => {
+  console.log("===== CLOUDINARY UPLOAD START =====");
+  console.log("File:", file.name);
+  console.log("File type:", file.type);
+  console.log("File size:", file.size);
+  console.log("Cloud name:", CLOUDINARY_CLOUD_NAME);
+  console.log("Upload preset:", CLOUDINARY_UPLOAD_PRESET);
+
   if (!CLOUDINARY_CLOUD_NAME) {
     throw new Error(
       "Cloudinary cloud name is not configured."
@@ -37,13 +48,13 @@ export const uploadToCloudinary = async (
     CLOUDINARY_UPLOAD_PRESET
   );
 
-  /*
-   * Cloudinary automatically determines the
-   * appropriate resource type for images/audio.
-   */
+  const uploadUrl =
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
+
+  console.log("Cloudinary upload URL:", uploadUrl);
 
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+    uploadUrl,
     {
       method: "POST",
       body: formData,
@@ -54,6 +65,8 @@ export const uploadToCloudinary = async (
     (await response.json()) as
       | CloudinaryUploadResponse
       | { error?: { message?: string } };
+
+  console.log("Cloudinary response:", data);
 
   if (!response.ok) {
     const errorMessage =
