@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import { Server, Socket } from "socket.io";
-import Message from "./models/Message.js";
+import Message, {
+  MessageType,
+} from "./models/Message.js";
 import CollaborationGroup from "./models/CollaborationGroup.js";
 
 interface AuthenticatedSocket extends Socket {
@@ -13,7 +15,10 @@ interface JoinGroupPayload {
 
 interface SendMessagePayload {
   groupId: string;
-  text: string;
+  type?: MessageType;
+  text?: string;
+  mediaUrl?: string;
+  duration?: number;
 }
 
 interface DeleteMessagePayload {
@@ -30,13 +35,17 @@ const getTokenFromCookie = (
   const tokenCookie = cookieHeader
     .split(";")
     .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith("token="));
+    .find((cookie) =>
+      cookie.startsWith("token=")
+    );
 
   if (!tokenCookie) {
     return null;
   }
 
-  return tokenCookie.substring("token=".length);
+  return tokenCookie.substring(
+    "token=".length
+  );
 };
 
 const setupSocket = (io: Server) => {
@@ -46,45 +55,62 @@ const setupSocket = (io: Server) => {
    * ==========================================
    */
 
-  io.use((socket: AuthenticatedSocket, next) => {
-    try {
-      const cookieHeader =
-        socket.handshake.headers.cookie;
+  io.use(
+    (
+      socket: AuthenticatedSocket,
+      next
+    ) => {
+      try {
+        const cookieHeader =
+          socket.handshake.headers.cookie;
 
-      const token = getTokenFromCookie(cookieHeader);
+        const token =
+          getTokenFromCookie(cookieHeader);
 
-      if (!token) {
-        return next(
-          new Error("Authentication required.")
+        if (!token) {
+          return next(
+            new Error(
+              "Authentication required."
+            )
+          );
+        }
+
+        const secret =
+          process.env.JWT_SECRET;
+
+        if (!secret) {
+          return next(
+            new Error(
+              "JWT secret is not configured."
+            )
+          );
+        }
+
+        const decoded = jwt.verify(
+          token,
+          secret
+        ) as {
+          userId: string;
+        };
+
+        socket.userId =
+          decoded.userId;
+
+        next();
+      } catch (error) {
+        console.error(
+          "Socket authentication error:",
+          error
+        );
+
+        next(
+          new Error(
+            "Invalid or expired session."
+          )
         );
       }
-
-      const secret = process.env.JWT_SECRET;
-
-      if (!secret) {
-        return next(
-          new Error("JWT secret is not configured.")
-        );
-      }
-
-      const decoded = jwt.verify(token, secret) as {
-        userId: string;
-      };
-
-      socket.userId = decoded.userId;
-
-      next();
-    } catch (error) {
-      console.error(
-        "Socket authentication error:",
-        error
-      );
-
-      next(
-        new Error("Invalid or expired session.")
-      );
     }
-  });
+  );
 
   /*
    * ==========================================
@@ -94,7 +120,9 @@ const setupSocket = (io: Server) => {
 
   io.on(
     "connection",
-    (socket: AuthenticatedSocket) => {
+    (
+      socket: AuthenticatedSocket
+    ) => {
       console.log(
         `🔌 User connected to Socket.IO: ${socket.userId}`
       );
@@ -111,35 +139,47 @@ const setupSocket = (io: Server) => {
           groupId,
         }: JoinGroupPayload) => {
           try {
-            const userId = socket.userId;
+            const userId =
+              socket.userId;
 
             if (!userId) {
-              socket.emit("socket_error", {
-                message:
-                  "Authentication required.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Authentication required.",
+                }
+              );
               return;
             }
 
             if (!groupId) {
-              socket.emit("socket_error", {
-                message:
-                  "Collaboration group ID is required.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Collaboration group ID is required.",
+                }
+              );
               return;
             }
 
             const group =
-              await CollaborationGroup.findOne({
-                _id: groupId,
-                members: userId,
-              });
+              await CollaborationGroup.findOne(
+                {
+                  _id: groupId,
+                  members: userId,
+                }
+              );
 
             if (!group) {
-              socket.emit("socket_error", {
-                message:
-                  "You are not a member of this collaboration group.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "You are not a member of this collaboration group.",
+                }
+              );
               return;
             }
 
@@ -149,19 +189,25 @@ const setupSocket = (io: Server) => {
               `👥 User ${userId} joined group ${groupId}`
             );
 
-            socket.emit("group_joined", {
-              groupId,
-            });
+            socket.emit(
+              "group_joined",
+              {
+                groupId,
+              }
+            );
           } catch (error) {
             console.error(
               "Join group socket error:",
               error
             );
 
-            socket.emit("socket_error", {
-              message:
-                "Failed to join collaboration group.",
-            });
+            socket.emit(
+              "socket_error",
+              {
+                message:
+                  "Failed to join collaboration group.",
+              }
+            );
           }
         }
       );
@@ -174,66 +220,243 @@ const setupSocket = (io: Server) => {
 
       socket.on(
         "send_message",
-        async ({
-          groupId,
-          text,
-        }: SendMessagePayload) => {
+        async (
+          payload: SendMessagePayload
+        ) => {
           try {
-            const userId = socket.userId;
+            const userId =
+              socket.userId;
 
             if (!userId) {
-              socket.emit("socket_error", {
-                message:
-                  "Authentication required.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Authentication required.",
+                }
+              );
               return;
             }
 
-            const trimmedText = text?.trim();
+            const {
+              groupId,
+              type = "text",
+              text,
+              mediaUrl,
+              duration,
+            } = payload;
 
-            if (!trimmedText) {
-              return;
-            }
+            /*
+             * Validate group ID.
+             */
 
-            if (trimmedText.length > 2000) {
-              socket.emit("socket_error", {
-                message:
-                  "Message cannot exceed 2000 characters.",
-              });
+            if (!groupId) {
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Collaboration group ID is required.",
+                }
+              );
               return;
             }
 
             /*
-             * Verify group membership.
+             * Validate message type.
+             */
+
+            const allowedTypes: MessageType[] =
+              [
+                "text",
+                "image",
+                "audio",
+              ];
+
+            if (
+              !allowedTypes.includes(type)
+            ) {
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Invalid message type.",
+                }
+              );
+              return;
+            }
+
+            /*
+             * ==================================
+             * TEXT MESSAGE VALIDATION
+             * ==================================
+             */
+
+            if (type === "text") {
+              const trimmedText =
+                text?.trim();
+
+              if (!trimmedText) {
+                return;
+              }
+
+              if (
+                trimmedText.length >
+                2000
+              ) {
+                socket.emit(
+                  "socket_error",
+                  {
+                    message:
+                      "Message cannot exceed 2000 characters.",
+                  }
+                );
+                return;
+              }
+            }
+
+            /*
+             * ==================================
+             * IMAGE / AUDIO VALIDATION
+             * ==================================
+             */
+
+            if (
+              type === "image" ||
+              type === "audio"
+            ) {
+              if (!mediaUrl) {
+                socket.emit(
+                  "socket_error",
+                  {
+                    message:
+                      "Media URL is required.",
+                  }
+                );
+                return;
+              }
+
+              /*
+               * Basic URL validation.
+               */
+
+              try {
+                new URL(mediaUrl);
+              } catch {
+                socket.emit(
+                  "socket_error",
+                  {
+                    message:
+                      "Invalid media URL.",
+                  }
+                );
+                return;
+              }
+            }
+
+            /*
+             * ==================================
+             * AUDIO DURATION VALIDATION
+             * ==================================
+             */
+
+            if (type === "audio") {
+              if (
+                duration !== undefined &&
+                (typeof duration !==
+                  "number" ||
+                  duration < 0)
+              ) {
+                socket.emit(
+                  "socket_error",
+                  {
+                    message:
+                      "Invalid audio duration.",
+                  }
+                );
+                return;
+              }
+            }
+
+            /*
+             * ==================================
+             * VERIFY GROUP MEMBERSHIP
+             * ==================================
              */
 
             const group =
-              await CollaborationGroup.findOne({
-                _id: groupId,
-                members: userId,
-              });
+              await CollaborationGroup.findOne(
+                {
+                  _id: groupId,
+                  members: userId,
+                }
+              );
 
             if (!group) {
-              socket.emit("socket_error", {
-                message:
-                  "You are not a member of this collaboration group.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "You are not a member of this collaboration group.",
+                }
+              );
               return;
             }
 
             /*
-             * Save message.
+             * ==================================
+             * PREPARE MESSAGE DATA
+             * ==================================
+             */
+
+            const messageData: {
+              group: string;
+              sender: string;
+              type: MessageType;
+              text?: string;
+              mediaUrl?: string;
+              duration?: number;
+            } = {
+              group: groupId,
+              sender: userId,
+              type,
+            };
+
+            if (type === "text") {
+              messageData.text =
+                text!.trim();
+            }
+
+            if (
+              type === "image" ||
+              type === "audio"
+            ) {
+              messageData.mediaUrl =
+                mediaUrl;
+            }
+
+            if (
+              type === "audio" &&
+              duration !== undefined
+            ) {
+              messageData.duration =
+                duration;
+            }
+
+            /*
+             * ==================================
+             * SAVE MESSAGE
+             * ==================================
              */
 
             const newMessage =
-              await Message.create({
-                group: groupId,
-                sender: userId,
-                text: trimmedText,
-              });
+              await Message.create(
+                messageData
+              );
 
             /*
-             * Populate sender information.
+             * ==================================
+             * POPULATE SENDER INFORMATION
+             * ==================================
              */
 
             const populatedMessage =
@@ -245,7 +468,9 @@ const setupSocket = (io: Server) => {
               );
 
             /*
-             * Send to everyone in group.
+             * ==================================
+             * SEND TO EVERYONE IN GROUP
+             * ==================================
              */
 
             io.to(groupId).emit(
@@ -258,10 +483,13 @@ const setupSocket = (io: Server) => {
               error
             );
 
-            socket.emit("socket_error", {
-              message:
-                "Failed to send message.",
-            });
+            socket.emit(
+              "socket_error",
+              {
+                message:
+                  "Failed to send message.",
+              }
+            );
           }
         }
       );
@@ -278,21 +506,28 @@ const setupSocket = (io: Server) => {
           messageId,
         }: DeleteMessagePayload) => {
           try {
-            const userId = socket.userId;
+            const userId =
+              socket.userId;
 
             if (!userId) {
-              socket.emit("socket_error", {
-                message:
-                  "Authentication required.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Authentication required.",
+                }
+              );
               return;
             }
 
             if (!messageId) {
-              socket.emit("socket_error", {
-                message:
-                  "Message ID is required.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Message ID is required.",
+                }
+              );
               return;
             }
 
@@ -301,13 +536,18 @@ const setupSocket = (io: Server) => {
              */
 
             const message =
-              await Message.findById(messageId);
+              await Message.findById(
+                messageId
+              );
 
             if (!message) {
-              socket.emit("socket_error", {
-                message:
-                  "Message not found.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "Message not found.",
+                }
+              );
               return;
             }
 
@@ -320,10 +560,13 @@ const setupSocket = (io: Server) => {
               message.sender.toString() !==
               userId
             ) {
-              socket.emit("socket_error", {
-                message:
-                  "You can only delete your own messages.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "You can only delete your own messages.",
+                }
+              );
               return;
             }
 
@@ -335,16 +578,21 @@ const setupSocket = (io: Server) => {
              */
 
             const group =
-              await CollaborationGroup.findOne({
-                _id: groupId,
-                members: userId,
-              });
+              await CollaborationGroup.findOne(
+                {
+                  _id: groupId,
+                  members: userId,
+                }
+              );
 
             if (!group) {
-              socket.emit("socket_error", {
-                message:
-                  "You are not a member of this collaboration group.",
-              });
+              socket.emit(
+                "socket_error",
+                {
+                  message:
+                    "You are not a member of this collaboration group.",
+                }
+              );
               return;
             }
 
@@ -374,10 +622,13 @@ const setupSocket = (io: Server) => {
               error
             );
 
-            socket.emit("socket_error", {
-              message:
-                "Failed to delete message.",
-            });
+            socket.emit(
+              "socket_error",
+              {
+                message:
+                  "Failed to delete message.",
+              }
+            );
           }
         }
       );
