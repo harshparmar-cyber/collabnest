@@ -1159,6 +1159,29 @@ const MessagesPage = () => {
             );
 
           /*
+           * Replace the temporary local blob URL
+           * with the real Cloudinary URL.
+           *
+           * This is important because the server
+           * sends the saved message back with the
+           * Cloudinary URL. Keeping the blob URL here
+           * prevents the optimistic message from being
+           * matched and replaced, leaving "Sending..."
+           * visible forever.
+           */
+          setMessages((previous) =>
+            previous.map((message) =>
+              message._id === optimistic._id
+                ? {
+                    ...message,
+                    mediaUrl:
+                      upload.secure_url,
+                  }
+                : message
+            )
+          );
+
+          /*
            * If user changed groups while
            * upload was happening, stop.
            */
