@@ -669,24 +669,26 @@ const handleConnect = async () => {
       </header>
 
       {/* =====================================================
-          SIDEBAR
+          DESKTOP SIDEBAR
       ===================================================== */}
 
       <aside
         className="
           fixed
-          bottom-0
           left-0
           top-[70px]
           z-40
           hidden
+          h-[calc(100vh-70px)]
           w-[240px]
+          shrink-0
           flex-col
           overflow-y-auto
           bg-gradient-to-b
           from-[#073b88]
           to-[#062f70]
           text-white
+          shadow-[4px_0_20px_rgba(7,59,136,0.12)]
           md:flex
         "
       >
@@ -696,65 +698,59 @@ const handleConnect = async () => {
             icon={<Home size={20} />}
             label="Dashboard"
             active
-            onClick={() =>
-              navigate("/dashboard")
-            }
+            onClick={() => navigate("/dashboard")}
           />
 
           <SidebarItem
-            icon={
-              <BriefcaseBusiness
-                size={20}
-              />
-            }
+            icon={<BriefcaseBusiness size={20} />}
             label="Find Projects"
-            onClick={() =>
-              navigate("/explore-projects")
-            }
+            onClick={() => navigate("/explore-projects")}
           />
 
           <SidebarItem
             icon={<Plus size={21} />}
             label="Post a Project"
-            onClick={() =>
-              navigate("/post-project")
-            }
+            onClick={() => navigate("/post-project")}
           />
 
           <SidebarItem
             icon={<Users size={20} />}
             label="My Collaborations"
+            onClick={() => navigate("/collaboration-requests")}
           />
 
-         <SidebarItem
-  icon={<MessageCircle size={20} />}
-  label="Messages"
-  badge="2"
-  onClick={() => navigate("/messages")}
-/>
+          <SidebarItem
+            icon={<MessageCircle size={20} />}
+            label="Messages"
+            badge="2"
+            onClick={() => navigate("/messages")}
+          />
 
           <SidebarItem
             icon={<Phone size={20} />}
             label="Calls"
+            onClick={() => navigate("/messages")}
           />
 
           <SidebarItem
             icon={<Mic size={20} />}
             label="Interview"
+            onClick={() => navigate("/messages")}
           />
 
           <SidebarItem
             icon={<Settings size={20} />}
             label="Settings"
+            onClick={() => navigate("/profile")}
           />
 
-          {/* Logout */}
+          <div className="my-4 h-px bg-white/10" />
 
           <SidebarItem
-  icon={<LogOut size={20} />}
-  label="Logout"
-  onClick={handleLogout}
-/>
+            icon={<LogOut size={20} />}
+            label="Logout"
+            onClick={handleLogout}
+          />
 
         </nav>
       </aside>
