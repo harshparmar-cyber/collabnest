@@ -1,13 +1,28 @@
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import { Server, Socket } from "socket.io";
+
 import Message, {
   MessageType,
 } from "./models/Message.js";
+
 import CollaborationGroup from "./models/CollaborationGroup.js";
+
+/*
+ * ============================================================
+ * AUTHENTICATED SOCKET
+ * ============================================================
+ */
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
 }
+
+/*
+ * ============================================================
+ * SOCKET PAYLOADS
+ * ============================================================
+ */
 
 interface JoinGroupPayload {
   groupId: string;
@@ -19,11 +34,47 @@ interface SendMessagePayload {
   text?: string;
   mediaUrl?: string;
   duration?: number;
+
+  /*
+   * Temporary client-side ID.
+   *
+   * This is NOT stored in MongoDB.
+   * It allows the frontend to match an optimistic
+   * message with the real server message later.
+   */
+  clientMessageId?: string;
 }
 
 interface DeleteMessagePayload {
   messageId: string;
 }
+
+interface EditMessagePayload {
+  messageId: string;
+  text: string;
+}
+
+/*
+ * ============================================================
+ * SOCKET ACKNOWLEDGEMENTS
+ * ============================================================
+ */
+
+interface SocketAck {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+}
+
+type SocketAckCallback = (
+  response: SocketAck
+) => void;
+
+/*
+ * ============================================================
+ * COOKIE TOKEN HELPER
+ * ============================================================
+ */
 
 const getTokenFromCookie = (
   cookieHeader?: string
@@ -48,11 +99,17 @@ const getTokenFromCookie = (
   );
 };
 
+/*
+ * ============================================================
+ * SOCKET SETUP
+ * ============================================================
+ */
+
 const setupSocket = (io: Server) => {
   /*
-   * ==========================================
+   * ==========================================================
    * SOCKET AUTHENTICATION
-   * ==========================================
+   * ==========================================================
    */
 
   io.use(
@@ -113,9 +170,9 @@ const setupSocket = (io: Server) => {
   );
 
   /*
-   * ==========================================
+   * ==========================================================
    * CONNECTION
-   * ==========================================
+   * ==========================================================
    */
 
   io.on(
@@ -128,39 +185,76 @@ const setupSocket = (io: Server) => {
       );
 
       /*
-       * ========================================
+       * ========================================================
        * JOIN COLLABORATION GROUP
-       * ========================================
+       * ========================================================
        */
 
       socket.on(
         "join_group",
-        async ({
-          groupId,
-        }: JoinGroupPayload) => {
+        async (
+          payload: JoinGroupPayload,
+          ack?: SocketAckCallback
+        ) => {
           try {
             const userId =
               socket.userId;
 
+            const groupId =
+              payload?.groupId;
+
             if (!userId) {
+              const response = {
+                success: false,
+                message:
+                  "Authentication required.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Authentication required.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
             if (!groupId) {
+              const response = {
+                success: false,
+                message:
+                  "Collaboration group ID is required.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Collaboration group ID is required.",
-                }
+                response
               );
+
+              ack?.(response);
+
+              return;
+            }
+
+            if (
+              !mongoose.Types.ObjectId.isValid(
+                groupId
+              )
+            ) {
+              const response = {
+                success: false,
+                message:
+                  "Invalid collaboration group ID.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
               return;
             }
 
@@ -173,13 +267,19 @@ const setupSocket = (io: Server) => {
               );
 
             if (!group) {
+              const response = {
+                success: false,
+                message:
+                  "You are not a member of this collaboration group.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "You are not a member of this collaboration group.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
@@ -195,46 +295,75 @@ const setupSocket = (io: Server) => {
                 groupId,
               }
             );
+
+            ack?.({
+              success: true,
+              data: {
+                groupId,
+              },
+            });
           } catch (error) {
             console.error(
               "Join group socket error:",
               error
             );
 
+            const response = {
+              success: false,
+              message:
+                "Failed to join collaboration group.",
+            };
+
             socket.emit(
               "socket_error",
-              {
-                message:
-                  "Failed to join collaboration group.",
-              }
+              response
             );
+
+            ack?.(response);
           }
         }
       );
 
       /*
-       * ========================================
+       * ========================================================
        * SEND MESSAGE
-       * ========================================
+       * ========================================================
+       *
+       * Supports:
+       *
+       * text
+       * image
+       * audio
+       *
+       * Also supports an optional acknowledgement so the
+       * frontend can implement optimistic messaging.
+       * ========================================================
        */
 
       socket.on(
         "send_message",
         async (
-          payload: SendMessagePayload
+          payload: SendMessagePayload,
+          ack?: SocketAckCallback
         ) => {
           try {
             const userId =
               socket.userId;
 
             if (!userId) {
+              const response = {
+                success: false,
+                message:
+                  "Authentication required.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Authentication required.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
@@ -244,25 +373,57 @@ const setupSocket = (io: Server) => {
               text,
               mediaUrl,
               duration,
-            } = payload;
+              clientMessageId,
+            } = payload || {};
 
             /*
-             * Validate group ID.
+             * --------------------------------------------------
+             * GROUP ID VALIDATION
+             * --------------------------------------------------
              */
 
             if (!groupId) {
+              const response = {
+                success: false,
+                message:
+                  "Collaboration group ID is required.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Collaboration group ID is required.",
-                }
+                response
               );
+
+              ack?.(response);
+
+              return;
+            }
+
+            if (
+              !mongoose.Types.ObjectId.isValid(
+                groupId
+              )
+            ) {
+              const response = {
+                success: false,
+                message:
+                  "Invalid collaboration group ID.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
               return;
             }
 
             /*
-             * Validate message type.
+             * --------------------------------------------------
+             * MESSAGE TYPE VALIDATION
+             * --------------------------------------------------
              */
 
             const allowedTypes: MessageType[] =
@@ -275,27 +436,45 @@ const setupSocket = (io: Server) => {
             if (
               !allowedTypes.includes(type)
             ) {
+              const response = {
+                success: false,
+                message:
+                  "Invalid message type.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Invalid message type.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
             /*
-             * ==================================
-             * TEXT MESSAGE VALIDATION
-             * ==================================
+             * --------------------------------------------------
+             * TEXT VALIDATION
+             * --------------------------------------------------
              */
 
+            let trimmedText:
+              | string
+              | undefined;
+
             if (type === "text") {
-              const trimmedText =
+              trimmedText =
                 text?.trim();
 
               if (!trimmedText) {
+                const response = {
+                  success: false,
+                  message:
+                    "Message cannot be empty.",
+                };
+
+                ack?.(response);
+
                 return;
               }
 
@@ -303,21 +482,27 @@ const setupSocket = (io: Server) => {
                 trimmedText.length >
                 2000
               ) {
+                const response = {
+                  success: false,
+                  message:
+                    "Message cannot exceed 2000 characters.",
+                };
+
                 socket.emit(
                   "socket_error",
-                  {
-                    message:
-                      "Message cannot exceed 2000 characters.",
-                  }
+                  response
                 );
+
+                ack?.(response);
+
                 return;
               }
             }
 
             /*
-             * ==================================
-             * IMAGE / AUDIO VALIDATION
-             * ==================================
+             * --------------------------------------------------
+             * IMAGE / AUDIO MEDIA URL VALIDATION
+             * --------------------------------------------------
              */
 
             if (
@@ -325,62 +510,78 @@ const setupSocket = (io: Server) => {
               type === "audio"
             ) {
               if (!mediaUrl) {
+                const response = {
+                  success: false,
+                  message:
+                    "Media URL is required.",
+                };
+
                 socket.emit(
                   "socket_error",
-                  {
-                    message:
-                      "Media URL is required.",
-                  }
+                  response
                 );
+
+                ack?.(response);
+
                 return;
               }
-
-              /*
-               * Basic URL validation.
-               */
 
               try {
                 new URL(mediaUrl);
               } catch {
+                const response = {
+                  success: false,
+                  message:
+                    "Invalid media URL.",
+                };
+
                 socket.emit(
                   "socket_error",
-                  {
-                    message:
-                      "Invalid media URL.",
-                  }
+                  response
                 );
+
+                ack?.(response);
+
                 return;
               }
             }
 
             /*
-             * ==================================
+             * --------------------------------------------------
              * AUDIO DURATION VALIDATION
-             * ==================================
+             * --------------------------------------------------
              */
 
             if (type === "audio") {
               if (
                 duration !== undefined &&
-                (typeof duration !==
-                  "number" ||
-                  duration < 0)
+                (
+                  typeof duration !==
+                    "number" ||
+                  duration < 0
+                )
               ) {
+                const response = {
+                  success: false,
+                  message:
+                    "Invalid audio duration.",
+                };
+
                 socket.emit(
                   "socket_error",
-                  {
-                    message:
-                      "Invalid audio duration.",
-                  }
+                  response
                 );
+
+                ack?.(response);
+
                 return;
               }
             }
 
             /*
-             * ==================================
+             * --------------------------------------------------
              * VERIFY GROUP MEMBERSHIP
-             * ==================================
+             * --------------------------------------------------
              */
 
             const group =
@@ -392,20 +593,26 @@ const setupSocket = (io: Server) => {
               );
 
             if (!group) {
+              const response = {
+                success: false,
+                message:
+                  "You are not a member of this collaboration group.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "You are not a member of this collaboration group.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
             /*
-             * ==================================
+             * --------------------------------------------------
              * PREPARE MESSAGE DATA
-             * ==================================
+             * --------------------------------------------------
              */
 
             const messageData: {
@@ -423,7 +630,7 @@ const setupSocket = (io: Server) => {
 
             if (type === "text") {
               messageData.text =
-                text!.trim();
+                trimmedText;
             }
 
             if (
@@ -443,9 +650,9 @@ const setupSocket = (io: Server) => {
             }
 
             /*
-             * ==================================
+             * --------------------------------------------------
              * SAVE MESSAGE
-             * ==================================
+             * --------------------------------------------------
              */
 
             const newMessage =
@@ -454,9 +661,9 @@ const setupSocket = (io: Server) => {
               );
 
             /*
-             * ==================================
-             * POPULATE SENDER INFORMATION
-             * ==================================
+             * --------------------------------------------------
+             * POPULATE SENDER
+             * --------------------------------------------------
              */
 
             const populatedMessage =
@@ -467,15 +674,65 @@ const setupSocket = (io: Server) => {
                 "name email profilePhoto"
               );
 
+            if (!populatedMessage) {
+              const response = {
+                success: false,
+                message:
+                  "Failed to create message.",
+              };
+
+              ack?.(response);
+
+              return;
+            }
+
             /*
-             * ==================================
+             * --------------------------------------------------
              * SEND TO EVERYONE IN GROUP
-             * ==================================
+             * --------------------------------------------------
+             *
+             * Existing frontend compatibility is preserved.
              */
 
             io.to(groupId).emit(
               "new_message",
               populatedMessage
+            );
+
+            /*
+             * --------------------------------------------------
+             * SEND SUCCESS ACK TO SENDER
+             * --------------------------------------------------
+             *
+             * clientMessageId allows the frontend to match
+             * an optimistic message with this real message.
+             */
+
+            ack?.({
+              success: true,
+              data: {
+                message:
+                  populatedMessage,
+                clientMessageId:
+                  clientMessageId ??
+                  null,
+              },
+            });
+
+            /*
+             * Separate event can also be used by the
+             * future frontend implementation.
+             */
+
+            socket.emit(
+              "message_sent",
+              {
+                message:
+                  populatedMessage,
+                clientMessageId:
+                  clientMessageId ??
+                  null,
+              }
             );
           } catch (error) {
             console.error(
@@ -483,56 +740,152 @@ const setupSocket = (io: Server) => {
               error
             );
 
+            const response = {
+              success: false,
+              message:
+                "Failed to send message.",
+            };
+
             socket.emit(
               "socket_error",
-              {
-                message:
-                  "Failed to send message.",
-              }
+              response
             );
+
+            ack?.(response);
           }
         }
       );
 
       /*
-       * ========================================
-       * DELETE MESSAGE
-       * ========================================
+       * ========================================================
+       * EDIT MESSAGE
+       * ========================================================
+       *
+       * Only text messages can be edited.
+       *
+       * Only the original sender can edit their own message.
+       *
+       * The message's updatedAt timestamp changes automatically
+       * because the Message model uses timestamps.
+       * ========================================================
        */
 
       socket.on(
-        "delete_message",
-        async ({
-          messageId,
-        }: DeleteMessagePayload) => {
+        "edit_message",
+        async (
+          payload: EditMessagePayload,
+          ack?: SocketAckCallback
+        ) => {
           try {
             const userId =
               socket.userId;
 
             if (!userId) {
+              const response = {
+                success: false,
+                message:
+                  "Authentication required.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Authentication required.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
+            const messageId =
+              payload?.messageId;
+
+            const text =
+              payload?.text?.trim();
+
+            /*
+             * --------------------------------------------------
+             * MESSAGE ID VALIDATION
+             * --------------------------------------------------
+             */
+
             if (!messageId) {
+              const response = {
+                success: false,
+                message:
+                  "Message ID is required.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Message ID is required.",
-                }
+                response
               );
+
+              ack?.(response);
+
+              return;
+            }
+
+            if (
+              !mongoose.Types.ObjectId.isValid(
+                messageId
+              )
+            ) {
+              const response = {
+                success: false,
+                message:
+                  "Invalid message ID.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
               return;
             }
 
             /*
-             * Find message.
+             * --------------------------------------------------
+             * TEXT VALIDATION
+             * --------------------------------------------------
+             */
+
+            if (!text) {
+              const response = {
+                success: false,
+                message:
+                  "Message cannot be empty.",
+              };
+
+              ack?.(response);
+
+              return;
+            }
+
+            if (text.length > 2000) {
+              const response = {
+                success: false,
+                message:
+                  "Message cannot exceed 2000 characters.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * FIND MESSAGE
+             * --------------------------------------------------
              */
 
             const message =
@@ -541,32 +894,326 @@ const setupSocket = (io: Server) => {
               );
 
             if (!message) {
+              const response = {
+                success: false,
+                message:
+                  "Message not found.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "Message not found.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
             /*
-             * Only the sender can delete
-             * their own message.
+             * --------------------------------------------------
+             * ONLY TEXT MESSAGES CAN BE EDITED
+             * --------------------------------------------------
+             */
+
+            if (message.type !== "text") {
+              const response = {
+                success: false,
+                message:
+                  "Only text messages can be edited.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * ONLY MESSAGE OWNER CAN EDIT
+             * --------------------------------------------------
              */
 
             if (
               message.sender.toString() !==
               userId
             ) {
+              const response = {
+                success: false,
+                message:
+                  "You can only edit your own messages.",
+              };
+
               socket.emit(
                 "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * VERIFY GROUP MEMBERSHIP
+             * --------------------------------------------------
+             */
+
+            const groupId =
+              message.group.toString();
+
+            const group =
+              await CollaborationGroup.findOne(
                 {
-                  message:
-                    "You can only delete your own messages.",
+                  _id: groupId,
+                  members: userId,
                 }
               );
+
+            if (!group) {
+              const response = {
+                success: false,
+                message:
+                  "You are not a member of this collaboration group.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * UPDATE MESSAGE
+             * --------------------------------------------------
+             */
+
+            message.text = text;
+
+            /*
+             * Because the Message schema uses timestamps,
+             * updatedAt will automatically be refreshed.
+             */
+
+            await message.save();
+
+            /*
+             * --------------------------------------------------
+             * POPULATE SENDER
+             * --------------------------------------------------
+             */
+
+            const populatedMessage =
+              await Message.findById(
+                message._id
+              ).populate(
+                "sender",
+                "name email profilePhoto"
+              );
+
+            if (!populatedMessage) {
+              const response = {
+                success: false,
+                message:
+                  "Failed to update message.",
+              };
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * NOTIFY EVERYONE
+             * --------------------------------------------------
+             */
+
+            io.to(groupId).emit(
+              "message_edited",
+              populatedMessage
+            );
+
+            /*
+             * --------------------------------------------------
+             * ACKNOWLEDGEMENT
+             * --------------------------------------------------
+             */
+
+            ack?.({
+              success: true,
+              data: {
+                message:
+                  populatedMessage,
+              },
+            });
+          } catch (error) {
+            console.error(
+              "Edit message socket error:",
+              error
+            );
+
+            const response = {
+              success: false,
+              message:
+                "Failed to edit message.",
+            };
+
+            socket.emit(
+              "socket_error",
+              response
+            );
+
+            ack?.(response);
+          }
+        }
+      );
+
+      /*
+       * ========================================================
+       * DELETE MESSAGE
+       * ========================================================
+       *
+       * Only the original sender can delete their own message.
+       * ========================================================
+       */
+
+      socket.on(
+        "delete_message",
+        async (
+          payload: DeleteMessagePayload,
+          ack?: SocketAckCallback
+        ) => {
+          try {
+            const userId =
+              socket.userId;
+
+            const messageId =
+              payload?.messageId;
+
+            if (!userId) {
+              const response = {
+                success: false,
+                message:
+                  "Authentication required.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * MESSAGE ID VALIDATION
+             * --------------------------------------------------
+             */
+
+            if (!messageId) {
+              const response = {
+                success: false,
+                message:
+                  "Message ID is required.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            if (
+              !mongoose.Types.ObjectId.isValid(
+                messageId
+              )
+            ) {
+              const response = {
+                success: false,
+                message:
+                  "Invalid message ID.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * FIND MESSAGE
+             * --------------------------------------------------
+             */
+
+            const message =
+              await Message.findById(
+                messageId
+              );
+
+            if (!message) {
+              const response = {
+                success: false,
+                message:
+                  "Message not found.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
+              return;
+            }
+
+            /*
+             * --------------------------------------------------
+             * ONLY SENDER CAN DELETE
+             * --------------------------------------------------
+             */
+
+            if (
+              message.sender.toString() !==
+              userId
+            ) {
+              const response = {
+                success: false,
+                message:
+                  "You can only delete your own messages.",
+              };
+
+              socket.emit(
+                "socket_error",
+                response
+              );
+
+              ack?.(response);
+
               return;
             }
 
@@ -574,7 +1221,9 @@ const setupSocket = (io: Server) => {
               message.group.toString();
 
             /*
-             * Verify group membership.
+             * --------------------------------------------------
+             * VERIFY GROUP MEMBERSHIP
+             * --------------------------------------------------
              */
 
             const group =
@@ -586,18 +1235,26 @@ const setupSocket = (io: Server) => {
               );
 
             if (!group) {
+              const response = {
+                success: false,
+                message:
+                  "You are not a member of this collaboration group.",
+              };
+
               socket.emit(
                 "socket_error",
-                {
-                  message:
-                    "You are not a member of this collaboration group.",
-                }
+                response
               );
+
+              ack?.(response);
+
               return;
             }
 
             /*
-             * Delete message.
+             * --------------------------------------------------
+             * DELETE MESSAGE
+             * --------------------------------------------------
              */
 
             await Message.findByIdAndDelete(
@@ -605,8 +1262,9 @@ const setupSocket = (io: Server) => {
             );
 
             /*
-             * Tell everyone in the group
-             * to remove the message.
+             * --------------------------------------------------
+             * NOTIFY EVERYONE
+             * --------------------------------------------------
              */
 
             io.to(groupId).emit(
@@ -616,27 +1274,46 @@ const setupSocket = (io: Server) => {
                 groupId,
               }
             );
+
+            /*
+             * --------------------------------------------------
+             * ACKNOWLEDGEMENT
+             * --------------------------------------------------
+             */
+
+            ack?.({
+              success: true,
+              data: {
+                messageId,
+                groupId,
+              },
+            });
           } catch (error) {
             console.error(
               "Delete message socket error:",
               error
             );
 
+            const response = {
+              success: false,
+              message:
+                "Failed to delete message.",
+            };
+
             socket.emit(
               "socket_error",
-              {
-                message:
-                  "Failed to delete message.",
-              }
+              response
             );
+
+            ack?.(response);
           }
         }
       );
 
       /*
-       * ========================================
+       * ========================================================
        * DISCONNECT
-       * ========================================
+       * ========================================================
        */
 
       socket.on(
