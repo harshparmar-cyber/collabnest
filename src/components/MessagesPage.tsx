@@ -15,13 +15,20 @@ import {
   Loader2,
   MessageCircle,
   Mic,
+  MicOff,
   MoreVertical,
   Paperclip,
+  PhoneCall,
+  PhoneOff,
   Send,
   Square,
   Trash2,
   Users,
+  Video,
+  VideoOff,
   X,
+  Maximize2,
+  Volume2,
 } from "lucide-react";
 
 import { io, Socket } from "socket.io-client";
@@ -60,15 +67,9 @@ interface MessageSender {
   profilePhoto?: string;
 }
 
-type ChatMessageType =
-  | "text"
-  | "image"
-  | "audio";
+type ChatMessageType = "text" | "image" | "audio";
 
-type MessageStatus =
-  | "sending"
-  | "sent"
-  | "failed";
+type MessageStatus = "sending" | "sent" | "failed";
 
 interface ChatMessage {
   _id: string;
@@ -89,10 +90,6 @@ interface ChatMessage {
 
   status?: MessageStatus;
 
-  /*
-   * Used only by the frontend for
-   * optimistic messages.
-   */
   optimistic?: boolean;
 }
 
@@ -102,6 +99,213 @@ interface CurrentUser {
   email?: string;
   profilePhoto?: string;
 }
+
+/* ========================================================= */
+/* MEETING TYPES */
+/* ========================================================= */
+
+interface IncomingMeeting {
+  meetingId: string;
+  groupId: string;
+  hostId: string;
+  hostName: string;
+  hostPhoto?: string;
+}
+
+interface MeetingState {
+  meetingId: string;
+  groupId: string;
+  hostId: string;
+  isHost: boolean;
+}
+
+interface MeetingParticipant {
+  userId: string;
+  name: string;
+  profilePhoto?: string;
+  stream?: MediaStream;
+  micEnabled: boolean;
+  cameraEnabled: boolean;
+  isSpeaking: boolean;
+}
+
+interface MeetingStartedPayload {
+  meetingId: string;
+  groupId: string;
+  hostId: string;
+  hostName?: string;
+}
+
+interface MeetingParticipantPayload {
+  meetingId: string;
+  groupId: string;
+  userId: string;
+  name: string;
+  profilePhoto?: string;
+  micEnabled?: boolean;
+  cameraEnabled?: boolean;
+}
+
+interface MeetingJoinedPayload {
+  meetingId: string;
+  groupId: string;
+  hostId: string;
+  participants?: string[];
+}
+
+interface MeetingLeftPayload {
+  meetingId: string;
+  groupId: string;
+  userId: string;
+}
+
+interface MeetingEndedPayload {
+  meetingId: string;
+  groupId: string;
+  hostId?: string;
+}
+
+interface WebRTCOfferPayload {
+  meetingId: string;
+  fromUserId: string;
+  toUserId: string;
+  offer: RTCSessionDescriptionInit;
+}
+
+interface WebRTCAnswerPayload {
+  meetingId: string;
+  fromUserId: string;
+  toUserId: string;
+  answer: RTCSessionDescriptionInit;
+}
+
+interface WebRTCIcePayload {
+  meetingId: string;
+  fromUserId: string;
+  toUserId: string;
+  candidate: RTCIceCandidateInit;
+}
+
+/* ========================================================= */
+/* VIDEO TILE */
+/* ========================================================= */
+
+const MeetingVideoTile = ({
+  participant,
+  isLocal,
+  onToggleFullscreen,
+}: {
+  participant: MeetingParticipant;
+  isLocal?: boolean;
+  onToggleFullscreen?: (
+    element: HTMLVideoElement
+  ) => void;
+}) => {
+  const videoRef =
+    useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (!videoRef.current) {
+      return;
+    }
+
+    if (participant.stream) {
+      videoRef.current.srcObject =
+        participant.stream;
+    } else {
+      videoRef.current.srcObject = null;
+    }
+  }, [participant.stream]);
+
+  const showVideo =
+    participant.cameraEnabled &&
+    !!participant.stream;
+
+  return (
+    <div
+      className={`group relative flex min-h-[180px] overflow-hidden rounded-2xl bg-slate-900 ${
+        participant.isSpeaking
+          ? "ring-2 ring-emerald-400"
+          : ""
+      }`}
+    >
+      {showVideo ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={!!isLocal}
+          className="h-full min-h-[180px] w-full object-cover"
+        />
+      ) : (
+        <div className="flex min-h-[180px] w-full items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950">
+          <div className="flex flex-col items-center">
+            {participant.profilePhoto ? (
+              <img
+                src={participant.profilePhoto}
+                alt={participant.name}
+                className="h-20 w-20 rounded-full object-cover ring-4 ring-white/10"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
+                {participant.name
+                  ?.charAt(0)
+                  .toUpperCase() || "U"}
+              </div>
+            )}
+
+            <p className="mt-3 text-sm font-semibold text-white">
+              {participant.name}
+            </p>
+
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
+              <VideoOff size={12} />
+              Camera off
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-3 pb-3 pt-8">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-xs font-semibold text-white">
+            {isLocal ? "You" : participant.name}
+          </span>
+
+          {!participant.micEnabled && (
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/90 text-white">
+              <MicOff size={12} />
+            </span>
+          )}
+
+          {participant.isSpeaking && (
+            <span className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[9px] font-bold text-white">
+              Speaking
+            </span>
+          )}
+        </div>
+
+        {!isLocal &&
+          onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={() => {
+                if (videoRef.current) {
+                  onToggleFullscreen(
+                    videoRef.current
+                  );
+                }
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition group-hover:opacity-100 hover:bg-white/20"
+              aria-label="Fullscreen video"
+            >
+              <Maximize2 size={13} />
+            </button>
+          )}
+      </div>
+    </div>
+  );
+};
 
 /* ========================================================= */
 /* COMPONENT */
@@ -188,6 +392,40 @@ const MessagesPage = () => {
     useState(0);
 
   /* ======================================================= */
+  /* MEETING STATE */
+  /* ======================================================= */
+
+  const [meeting, setMeeting] =
+    useState<MeetingState | null>(null);
+
+  const [incomingMeeting, setIncomingMeeting] =
+    useState<IncomingMeeting | null>(null);
+
+  const [localStream, setLocalStream] =
+    useState<MediaStream | null>(null);
+
+  const [meetingParticipants, setMeetingParticipants] =
+    useState<MeetingParticipant[]>([]);
+
+  const [isMicEnabled, setIsMicEnabled] =
+    useState(true);
+
+  const [isCameraEnabled, setIsCameraEnabled] =
+    useState(true);
+
+  const [meetingLoading, setMeetingLoading] =
+    useState(false);
+
+  const [meetingError, setMeetingError] =
+    useState("");
+
+  const [meetingElapsed, setMeetingElapsed] =
+    useState(0);
+
+  const [isMeetingFullscreen, setIsMeetingFullscreen] =
+    useState(false);
+
+  /* ======================================================= */
   /* REFS */
   /* ======================================================= */
 
@@ -222,35 +460,62 @@ const MessagesPage = () => {
       typeof setInterval
     > | null>(null);
 
-  /*
-   * Used for long press.
-   */
   const longPressTimerRef =
     useRef<ReturnType<
       typeof setTimeout
     > | null>(null);
 
-  /*
-   * Used to determine whether the
-   * user is currently near the bottom.
-   */
   const isNearBottomRef =
     useRef(true);
 
-  /*
-   * Temporary optimistic messages.
-   */
   const optimisticMessagesRef =
-    useRef<
-      Map<string, string>
-    >(new Map());
+    useRef<Map<string, string>>(
+      new Map()
+    );
 
-  /*
-   * Automatically scroll after a new
-   * message if appropriate.
-   */
   const shouldAutoScrollRef =
     useRef(false);
+
+  /* ======================================================= */
+  /* MEETING REFS */
+  /* ======================================================= */
+
+  const localStreamRef =
+    useRef<MediaStream | null>(null);
+
+  const meetingRef =
+    useRef<MeetingState | null>(null);
+
+  const peerConnectionsRef =
+    useRef<
+      Map<string, RTCPeerConnection>
+    >(new Map());
+
+  const meetingParticipantsRef =
+    useRef<
+      Map<string, MeetingParticipant>
+    >(new Map());
+
+  const meetingTimerRef =
+    useRef<ReturnType<
+      typeof setInterval
+    > | null>(null);
+
+  const meetingAudioContextRef =
+    useRef<AudioContext | null>(null);
+
+  const meetingAnalyserTimersRef =
+    useRef<
+      Map<
+        string,
+        ReturnType<typeof setInterval>
+      >
+    >(new Map());
+
+  const pendingIceCandidatesRef =
+    useRef<
+      Map<string, RTCIceCandidateInit[]>
+    >(new Map());
 
   /* ======================================================= */
   /* SELECTED GROUP REF */
@@ -260,6 +525,59 @@ const MessagesPage = () => {
     selectedGroupRef.current =
       selectedGroup;
   }, [selectedGroup]);
+
+  /* ======================================================= */
+  /* MEETING REF */
+  /* ======================================================= */
+
+  useEffect(() => {
+    meetingRef.current =
+      meeting;
+  }, [meeting]);
+
+  /* ======================================================= */
+  /* MEETING TIMER */
+  /* ======================================================= */
+
+  useEffect(() => {
+    if (!meeting) {
+      if (meetingTimerRef.current) {
+        clearInterval(
+          meetingTimerRef.current
+        );
+
+        meetingTimerRef.current = null;
+      }
+
+      setMeetingElapsed(0);
+
+      return;
+    }
+
+    const startedAt = Date.now();
+
+    setMeetingElapsed(0);
+
+    meetingTimerRef.current =
+      setInterval(() => {
+        setMeetingElapsed(
+          Math.floor(
+            (Date.now() - startedAt) /
+              1000
+          )
+        );
+      }, 1000);
+
+    return () => {
+      if (meetingTimerRef.current) {
+        clearInterval(
+          meetingTimerRef.current
+        );
+
+        meetingTimerRef.current = null;
+      }
+    };
+  }, [meeting?.meetingId]);
 
   /* ======================================================= */
   /* FETCH CURRENT USER */
@@ -356,6 +674,1327 @@ const MessagesPage = () => {
 
     fetchGroups();
   }, []);
+
+  /* ======================================================= */
+  /* FIND MEMBER */
+  /* ======================================================= */
+
+  const findGroupMember = (
+    userId: string
+  ) => {
+    const group =
+      selectedGroupRef.current;
+
+    return group?.members.find(
+      (member) =>
+        member._id === userId
+    );
+  };
+
+  /* ======================================================= */
+  /* UPDATE MEETING PARTICIPANT */
+  /* ======================================================= */
+
+  const updateMeetingParticipant = (
+    userId: string,
+    updates: Partial<MeetingParticipant>
+  ) => {
+    setMeetingParticipants(
+      (previous) =>
+        previous.map(
+          (participant) =>
+            participant.userId === userId
+              ? {
+                  ...participant,
+                  ...updates,
+                }
+              : participant
+        )
+    );
+
+    const existing =
+      meetingParticipantsRef.current.get(
+        userId
+      );
+
+    if (existing) {
+      meetingParticipantsRef.current.set(
+        userId,
+        {
+          ...existing,
+          ...updates,
+        }
+      );
+    }
+  };
+
+  /* ======================================================= */
+  /* SPEAKING DETECTION */
+  /* ======================================================= */
+
+  const startSpeakingDetection = (
+    userId: string,
+    stream: MediaStream
+  ) => {
+    if (
+      meetingAnalyserTimersRef.current.has(
+        userId
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const audioTracks =
+        stream.getAudioTracks();
+
+      if (audioTracks.length === 0) {
+        return;
+      }
+
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as typeof window & {
+          webkitAudioContext?: typeof AudioContext;
+        }).webkitAudioContext;
+
+      if (!AudioContextClass) {
+        return;
+      }
+
+      const context =
+        meetingAudioContextRef.current ||
+        new AudioContextClass();
+
+      meetingAudioContextRef.current =
+        context;
+
+      if (context.state === "suspended") {
+        void context.resume();
+      }
+
+      const source =
+        context.createMediaStreamSource(
+          stream
+        );
+
+      const analyser =
+        context.createAnalyser();
+
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.65;
+
+      source.connect(analyser);
+
+      const data = new Uint8Array(
+        analyser.fftSize
+      );
+
+      const timer = setInterval(() => {
+        analyser.getByteTimeDomainData(
+          data
+        );
+
+        let sum = 0;
+
+        for (const value of data) {
+          const normalized =
+            (value - 128) / 128;
+          sum += normalized * normalized;
+        }
+
+        const rms = Math.sqrt(
+          sum / data.length
+        );
+
+        updateMeetingParticipant(
+          userId,
+          {
+            isSpeaking: rms > 0.055,
+          }
+        );
+      }, 180);
+
+      meetingAnalyserTimersRef.current.set(
+        userId,
+        timer
+      );
+    } catch (error) {
+      console.warn(
+        "Speaking detection unavailable:",
+        error
+      );
+    }
+  };
+
+  /* ======================================================= */
+  /* CREATE WEBRTC PEER */
+  /* ======================================================= */
+
+  const createPeerConnection = async (
+    peerUserId: string
+  ) => {
+    const currentMeeting =
+      meetingRef.current;
+
+    const currentSocket =
+      socketRef.current;
+
+    if (
+      !currentMeeting ||
+      !currentSocket?.connected ||
+      !currentUser
+    ) {
+      return null;
+    }
+
+    const existing =
+      peerConnectionsRef.current.get(
+        peerUserId
+      );
+
+    if (existing) {
+      return existing;
+    }
+
+    const peerConnection =
+      new RTCPeerConnection({
+        iceServers: [
+          {
+            urls:
+              "stun:stun.l.google.com:19302",
+          },
+          {
+            urls:
+              "stun:stun1.l.google.com:19302",
+          },
+        ],
+      });
+
+    peerConnectionsRef.current.set(
+      peerUserId,
+      peerConnection
+    );
+
+    const stream =
+      localStreamRef.current;
+
+    if (stream) {
+      stream
+        .getTracks()
+        .forEach((track) => {
+          peerConnection.addTrack(
+            track,
+            stream
+          );
+        });
+    }
+
+    peerConnection.onicecandidate =
+      (event) => {
+        if (
+          !event.candidate ||
+          !meetingRef.current
+        ) {
+          return;
+        }
+
+        currentSocket.emit(
+          "webrtc_ice_candidate",
+          {
+            meetingId:
+              meetingRef.current
+                .meetingId,
+
+            toUserId:
+              peerUserId,
+
+            candidate:
+              event.candidate.toJSON(),
+          }
+        );
+      };
+
+    peerConnection.ontrack =
+      (event) => {
+        const remoteStream =
+          event.streams?.[0];
+
+        if (!remoteStream) {
+          return;
+        }
+
+        startSpeakingDetection(
+          peerUserId,
+          remoteStream
+        );
+
+        const existingParticipant =
+          meetingParticipantsRef.current.get(
+            peerUserId
+          );
+
+        const member =
+          findGroupMember(
+            peerUserId
+          );
+
+        const participant: MeetingParticipant =
+          existingParticipant || {
+            userId:
+              peerUserId,
+
+            name:
+              member?.name ||
+              "Participant",
+
+            profilePhoto:
+              member?.profilePhoto,
+
+            micEnabled:
+              true,
+
+            cameraEnabled:
+              true,
+
+            isSpeaking:
+              false,
+          };
+
+        const updated = {
+          ...participant,
+          stream:
+            remoteStream,
+        };
+
+        meetingParticipantsRef.current.set(
+          peerUserId,
+          updated
+        );
+
+        setMeetingParticipants(
+          (previous) => {
+            const exists =
+              previous.some(
+                (item) =>
+                  item.userId ===
+                  peerUserId
+              );
+
+            if (!exists) {
+              return [
+                ...previous,
+                updated,
+              ];
+            }
+
+            return previous.map(
+              (item) =>
+                item.userId ===
+                peerUserId
+                  ? updated
+                  : item
+            );
+          }
+        );
+      };
+
+    peerConnection.onconnectionstatechange =
+      () => {
+        const state =
+          peerConnection.connectionState;
+
+        if (
+          state === "failed" ||
+          state === "closed"
+        ) {
+          peerConnection.close();
+
+          peerConnectionsRef.current.delete(
+            peerUserId
+          );
+        }
+      };
+
+    const pendingCandidates =
+      pendingIceCandidatesRef.current.get(
+        peerUserId
+      );
+
+    if (pendingCandidates?.length) {
+      pendingIceCandidatesRef.current.delete(
+        peerUserId
+      );
+
+      for (const candidate of pendingCandidates) {
+        try {
+          await peerConnection.addIceCandidate(
+            new RTCIceCandidate(candidate)
+          );
+        } catch (error) {
+          console.warn(
+            "Failed to apply queued ICE candidate:",
+            error
+          );
+        }
+      }
+    }
+
+    return peerConnection;
+  };
+
+  /* ======================================================= */
+  /* CREATE OFFER */
+  /* ======================================================= */
+
+  const createOfferForParticipant =
+    async (
+      peerUserId: string
+    ) => {
+      const currentSocket =
+        socketRef.current;
+
+      const currentMeeting =
+        meetingRef.current;
+
+      if (
+        !currentSocket?.connected ||
+        !currentMeeting
+      ) {
+        return;
+      }
+
+      try {
+        const peer =
+          await createPeerConnection(
+            peerUserId
+          );
+
+        if (!peer) {
+          return;
+        }
+
+        const offer =
+          await peer.createOffer();
+
+        await peer.setLocalDescription(
+          offer
+        );
+
+        currentSocket.emit(
+          "webrtc_offer",
+          {
+            meetingId:
+              currentMeeting.meetingId,
+
+            toUserId:
+              peerUserId,
+
+            offer,
+          }
+        );
+      } catch (error) {
+        console.error(
+          "Failed to create WebRTC offer:",
+          error
+        );
+      }
+    };
+
+  /* ======================================================= */
+  /* HANDLE WEBRTC OFFER */
+  /* ======================================================= */
+
+  const handleWebRTCOffer =
+    async (
+      payload: WebRTCOfferPayload
+    ) => {
+      const currentSocket =
+        socketRef.current;
+
+      const currentMeeting =
+        meetingRef.current;
+
+      if (
+        !currentSocket?.connected ||
+        !currentMeeting ||
+        payload.meetingId !==
+          currentMeeting.meetingId ||
+        payload.toUserId !==
+          currentUser?.id
+      ) {
+        return;
+      }
+
+      try {
+        const peer =
+          await createPeerConnection(
+            payload.fromUserId
+          );
+
+        if (!peer) {
+          return;
+        }
+
+        await peer.setRemoteDescription(
+          new RTCSessionDescription(
+            payload.offer
+          )
+        );
+
+        const answer =
+          await peer.createAnswer();
+
+        await peer.setLocalDescription(
+          answer
+        );
+
+        currentSocket.emit(
+          "webrtc_answer",
+          {
+            meetingId:
+              currentMeeting.meetingId,
+
+            toUserId:
+              payload.fromUserId,
+
+            answer,
+          }
+        );
+      } catch (error) {
+        console.error(
+          "Failed to handle WebRTC offer:",
+          error
+        );
+      }
+    };
+
+  /* ======================================================= */
+  /* HANDLE WEBRTC ANSWER */
+  /* ======================================================= */
+
+  const handleWebRTCAnswer =
+    async (
+      payload: WebRTCAnswerPayload
+    ) => {
+      const currentMeeting =
+        meetingRef.current;
+
+      if (
+        !currentMeeting ||
+        payload.meetingId !==
+          currentMeeting.meetingId ||
+        payload.toUserId !==
+          currentUser?.id
+      ) {
+        return;
+      }
+
+      const peer =
+        peerConnectionsRef.current.get(
+          payload.fromUserId
+        );
+
+      if (!peer) {
+        return;
+      }
+
+      try {
+        await peer.setRemoteDescription(
+          new RTCSessionDescription(
+            payload.answer
+          )
+        );
+      } catch (error) {
+        console.error(
+          "Failed to set WebRTC answer:",
+          error
+        );
+      }
+    };
+
+  /* ======================================================= */
+  /* HANDLE ICE */
+  /* ======================================================= */
+
+  const handleWebRTCIce =
+    async (
+      payload: WebRTCIcePayload
+    ) => {
+      const currentMeeting =
+        meetingRef.current;
+
+      if (
+        !currentMeeting ||
+        payload.meetingId !==
+          currentMeeting.meetingId ||
+        payload.toUserId !==
+          currentUser?.id
+      ) {
+        return;
+      }
+
+      const peer =
+        peerConnectionsRef.current.get(
+          payload.fromUserId
+        );
+
+      if (!peer) {
+        const pending =
+          pendingIceCandidatesRef.current.get(
+            payload.fromUserId
+          ) || [];
+
+        pending.push(
+          payload.candidate
+        );
+
+        pendingIceCandidatesRef.current.set(
+          payload.fromUserId,
+          pending
+        );
+
+        return;
+      }
+
+      try {
+        await peer.addIceCandidate(
+          new RTCIceCandidate(
+            payload.candidate
+          )
+        );
+      } catch (error) {
+        console.error(
+          "Failed to add ICE candidate:",
+          error
+        );
+      }
+    };
+
+  /* ======================================================= */
+  /* STOP MEETING STREAM */
+  /* ======================================================= */
+
+  const stopLocalStream = () => {
+    const stream =
+      localStreamRef.current;
+
+    if (stream) {
+      stream
+        .getTracks()
+        .forEach((track) =>
+          track.stop()
+        );
+    }
+
+    localStreamRef.current = null;
+
+    setLocalStream(null);
+  };
+
+  /* ======================================================= */
+  /* CLOSE PEERS */
+  /* ======================================================= */
+
+  const closeAllPeerConnections =
+    () => {
+      peerConnectionsRef.current.forEach(
+        (peer) => {
+          try {
+            peer.close();
+          } catch {
+            // Ignore already closed peers.
+          }
+        }
+      );
+
+      peerConnectionsRef.current.clear();
+
+      meetingAnalyserTimersRef.current.forEach(
+        (timer) =>
+          clearInterval(timer)
+      );
+
+      meetingAnalyserTimersRef.current.clear();
+
+      if (meetingAudioContextRef.current) {
+        void meetingAudioContextRef.current
+          .close()
+          .catch(() => undefined);
+
+        meetingAudioContextRef.current =
+          null;
+      }
+
+      pendingIceCandidatesRef.current.clear();
+
+      setMeetingParticipants([]);
+
+      meetingParticipantsRef.current.clear();
+    };
+
+  /* ======================================================= */
+  /* CLEANUP MEETING */
+  /* ======================================================= */
+
+  const cleanupMeeting = () => {
+    closeAllPeerConnections();
+
+    stopLocalStream();
+
+    setMeeting(null);
+
+    setMeetingLoading(false);
+
+    setMeetingError("");
+
+    setIsMicEnabled(true);
+
+    setIsCameraEnabled(true);
+
+    setMeetingElapsed(0);
+  };
+
+  /* ======================================================= */
+  /* START LOCAL MEDIA */
+  /* ======================================================= */
+
+  const startLocalMedia =
+    async () => {
+      if (
+        localStreamRef.current
+      ) {
+        return localStreamRef.current;
+      }
+
+      if (
+        !navigator.mediaDevices?.getUserMedia
+      ) {
+        throw new Error(
+          "Camera and microphone are not supported in this browser."
+        );
+      }
+
+      try {
+        const stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              audio: true,
+              video: true,
+            }
+          );
+
+        localStreamRef.current =
+          stream;
+
+        setLocalStream(stream);
+
+        setIsMicEnabled(true);
+        setIsCameraEnabled(true);
+
+        return stream;
+      } catch (videoError) {
+        console.warn(
+          "Camera unavailable, trying audio-only meeting:",
+          videoError
+        );
+
+        try {
+          const audioOnlyStream =
+            await navigator.mediaDevices.getUserMedia(
+              {
+                audio: true,
+                video: false,
+              }
+            );
+
+          localStreamRef.current =
+            audioOnlyStream;
+
+          setLocalStream(
+            audioOnlyStream
+          );
+
+          setIsMicEnabled(true);
+          setIsCameraEnabled(false);
+
+          return audioOnlyStream;
+        } catch (audioError) {
+          throw new Error(
+            "Unable to access your microphone. Please allow microphone access and try again."
+          );
+        }
+      }
+    };
+
+  /* ======================================================= */
+  /* ADD LOCAL PARTICIPANT */
+  /* ======================================================= */
+
+  const addLocalParticipant =
+    () => {
+      if (!currentUser) {
+        return;
+      }
+
+      const participant: MeetingParticipant =
+        {
+          userId:
+            currentUser.id,
+
+          name:
+            currentUser.name,
+
+          profilePhoto:
+            currentUser.profilePhoto,
+
+          stream:
+            localStreamRef.current ||
+            undefined,
+
+          micEnabled:
+            isMicEnabled,
+
+          cameraEnabled:
+            isCameraEnabled,
+
+          isSpeaking:
+            false,
+        };
+
+      meetingParticipantsRef.current.set(
+        currentUser.id,
+        participant
+      );
+
+      setMeetingParticipants(
+        (previous) => {
+          const withoutLocal =
+            previous.filter(
+              (item) =>
+                item.userId !==
+                currentUser.id
+            );
+
+          return [
+            participant,
+            ...withoutLocal,
+          ];
+        }
+      );
+    };
+
+  /* ======================================================= */
+  /* START MEETING */
+  /* ======================================================= */
+
+  const startMeeting = async () => {
+    const currentSocket =
+      socketRef.current;
+
+    const currentGroup =
+      selectedGroupRef.current;
+
+    if (
+      !currentSocket?.connected ||
+      !currentGroup ||
+      !currentUser ||
+      meetingLoading ||
+      meeting
+    ) {
+      return;
+    }
+
+    try {
+      setMeetingLoading(true);
+      setMeetingError("");
+
+      await startLocalMedia();
+
+      addLocalParticipant();
+
+      currentSocket.emit(
+        "meeting_invite",
+        {
+          groupId:
+            currentGroup._id,
+        },
+        (
+          response: {
+            success: boolean;
+            message?: string;
+            data?: {
+              meetingId?: string;
+            };
+          }
+        ) => {
+          const responseData =
+            response?.data as
+              | { meetingId?: string }
+              | undefined;
+
+          const meetingId =
+            responseData?.meetingId;
+
+          if (
+            !response?.success ||
+            !meetingId
+          ) {
+            setMeetingError(
+              response?.message ||
+                "Unable to start the meeting."
+            );
+
+            cleanupMeeting();
+
+            return;
+          }
+
+          const nextMeeting: MeetingState =
+            {
+              meetingId,
+
+              groupId:
+                currentGroup._id,
+
+              hostId:
+                currentUser.id,
+
+              isHost:
+                true,
+            };
+
+          setMeeting(
+            nextMeeting
+          );
+
+          meetingRef.current =
+            nextMeeting;
+
+          setMeetingLoading(false);
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Failed to start meeting:",
+        error
+      );
+
+      setMeetingError(
+        error instanceof Error
+          ? error.message
+          : "Unable to start meeting."
+      );
+
+      cleanupMeeting();
+    }
+  };
+
+  /* ======================================================= */
+  /* ACCEPT MEETING */
+  /* ======================================================= */
+
+  const acceptMeeting = async () => {
+    const invite =
+      incomingMeeting;
+
+    const currentSocket =
+      socketRef.current;
+
+    if (
+      !invite ||
+      !currentSocket?.connected ||
+      !currentUser
+    ) {
+      return;
+    }
+
+    try {
+      setMeetingLoading(true);
+      setMeetingError("");
+
+      const group =
+        groups.find(
+          (item) =>
+            item._id ===
+            invite.groupId
+        );
+
+      if (
+        group &&
+        selectedGroupRef.current?._id !==
+          group._id
+      ) {
+        await openGroup(group);
+      }
+
+      await startLocalMedia();
+
+      addLocalParticipant();
+
+      currentSocket.emit(
+        "meeting_accept",
+        {
+          groupId:
+            invite.groupId,
+
+          meetingId:
+            invite.meetingId,
+        },
+        (
+          response: {
+            success: boolean;
+            message?: string;
+          }
+        ) => {
+          if (
+            !response?.success
+          ) {
+            setMeetingError(
+              response?.message ||
+                "Unable to join meeting."
+            );
+
+            cleanupMeeting();
+
+            return;
+          }
+
+          const nextMeeting: MeetingState =
+            {
+              meetingId:
+                invite.meetingId,
+
+              groupId:
+                invite.groupId,
+
+              hostId:
+                invite.hostId,
+
+              isHost:
+                false,
+            };
+
+          setMeeting(
+            nextMeeting
+          );
+
+          meetingRef.current =
+            nextMeeting;
+
+          setIncomingMeeting(
+            null
+          );
+
+          setMeetingLoading(false);
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Failed to accept meeting:",
+        error
+      );
+
+      setMeetingError(
+        error instanceof Error
+          ? error.message
+          : "Unable to join meeting."
+      );
+
+      cleanupMeeting();
+    }
+  };
+
+  /* ======================================================= */
+  /* DECLINE MEETING */
+  /* ======================================================= */
+
+  const declineMeeting = () => {
+    const invite =
+      incomingMeeting;
+
+    const currentSocket =
+      socketRef.current;
+
+    if (
+      invite &&
+      currentSocket?.connected
+    ) {
+      currentSocket.emit(
+        "meeting_decline",
+        {
+          meetingId:
+            invite.meetingId,
+
+          groupId:
+            invite.groupId,
+        }
+      );
+    }
+
+    setIncomingMeeting(null);
+  };
+
+  /* ======================================================= */
+  /* LEAVE MEETING */
+  /* ======================================================= */
+
+  const leaveMeeting = () => {
+    const currentSocket =
+      socketRef.current;
+
+    const currentMeeting =
+      meetingRef.current;
+
+    if (
+      currentSocket?.connected &&
+      currentMeeting
+    ) {
+      currentSocket.emit(
+        "meeting_leave",
+        {
+          meetingId:
+            currentMeeting.meetingId,
+
+          groupId:
+            currentMeeting.groupId,
+        }
+      );
+    }
+
+    cleanupMeeting();
+  };
+
+  /* ======================================================= */
+  /* END MEETING */
+  /* ======================================================= */
+
+  const endMeeting = () => {
+    const currentSocket =
+      socketRef.current;
+
+    const currentMeeting =
+      meetingRef.current;
+
+    if (
+      currentSocket?.connected &&
+      currentMeeting
+    ) {
+      currentSocket.emit(
+        "meeting_end",
+        {
+          meetingId:
+            currentMeeting.meetingId,
+
+          groupId:
+            currentMeeting.groupId,
+        }
+      );
+    }
+
+    cleanupMeeting();
+  };
+
+  /* ======================================================= */
+  /* TOGGLE MICROPHONE */
+  /* ======================================================= */
+
+  const toggleMicrophone =
+    () => {
+      const stream =
+        localStreamRef.current;
+
+      if (!stream) {
+        return;
+      }
+
+      const audioTracks =
+        stream.getAudioTracks();
+
+      if (
+        audioTracks.length ===
+        0
+      ) {
+        return;
+      }
+
+      const nextEnabled =
+        !isMicEnabled;
+
+      audioTracks.forEach(
+        (track) => {
+          track.enabled =
+            nextEnabled;
+        }
+      );
+
+      setIsMicEnabled(
+        nextEnabled
+      );
+
+      updateMeetingParticipant(
+        currentUser?.id || "",
+        {
+          micEnabled:
+            nextEnabled,
+        }
+      );
+
+    };
+
+  /* ======================================================= */
+  /* TOGGLE CAMERA */
+  /* ======================================================= */
+
+  const toggleCamera =
+    async () => {
+      const stream =
+        localStreamRef.current;
+
+      if (!stream) {
+        return;
+      }
+
+      let videoTracks =
+        stream.getVideoTracks();
+
+      if (
+        videoTracks.length ===
+        0 &&
+        !isCameraEnabled
+      ) {
+        try {
+          const cameraStream =
+            await navigator.mediaDevices.getUserMedia(
+              {
+                video: true,
+              }
+            );
+
+          const videoTrack =
+            cameraStream.getVideoTracks()[0];
+
+          if (!videoTrack) {
+            throw new Error(
+              "Camera could not be started."
+            );
+          }
+
+          stream.addTrack(
+            videoTrack
+          );
+
+          videoTracks =
+            stream.getVideoTracks();
+
+          peerConnectionsRef.current.forEach(
+            (peer) => {
+              const sender =
+                peer
+                  .getSenders()
+                  .find(
+                    (item) =>
+                      item.track?.kind ===
+                      "video"
+                  );
+
+              if (sender) {
+                sender.replaceTrack(
+                  videoTrack
+                );
+              } else {
+                peer.addTrack(
+                  videoTrack,
+                  stream
+                );
+              }
+            }
+          );
+
+          setIsCameraEnabled(
+            true
+          );
+
+          updateMeetingParticipant(
+            currentUser?.id || "",
+            {
+              cameraEnabled:
+                true,
+            }
+          );
+        } catch (error) {
+          setMeetingError(
+            error instanceof Error
+              ? error.message
+              : "Unable to access your camera."
+          );
+
+          return;
+        }
+      } else {
+        const nextEnabled =
+          !isCameraEnabled;
+
+        videoTracks.forEach(
+          (track) => {
+            track.enabled =
+              nextEnabled;
+          }
+        );
+
+        setIsCameraEnabled(
+          nextEnabled
+        );
+
+        updateMeetingParticipant(
+          currentUser?.id || "",
+          {
+            cameraEnabled:
+              nextEnabled,
+          }
+        );
+      }
+
+    };
+
+  /* ======================================================= */
+  /* FORMAT MEETING TIME */
+  /* ======================================================= */
+
+  const formatMeetingTime =
+    (seconds: number) => {
+      const safe =
+        Math.max(
+          0,
+          Math.floor(seconds)
+        );
+
+      const hours =
+        Math.floor(
+          safe / 3600
+        );
+
+      const minutes =
+        Math.floor(
+          (safe % 3600) /
+            60
+        );
+
+      const secs =
+        safe % 60;
+
+      if (hours > 0) {
+        return `${hours}:${minutes
+          .toString()
+          .padStart(2, "0")}:${secs
+          .toString()
+          .padStart(2, "0")}`;
+      }
+
+      return `${minutes}:${secs
+        .toString()
+        .padStart(2, "0")}`;
+    };
 
   /* ======================================================= */
   /* SOCKET CONNECTION */
@@ -462,10 +2101,6 @@ const MessagesPage = () => {
 
         setMessages(
           (previous) => {
-            /*
-             * Already exists as a real
-             * server message.
-             */
             if (
               previous.some(
                 (item) =>
@@ -476,11 +2111,6 @@ const MessagesPage = () => {
               return previous;
             }
 
-            /*
-             * If this is our own message,
-             * try to replace an optimistic
-             * version of it.
-             */
             const optimisticIndex =
               previous.findIndex(
                 (item) => {
@@ -545,10 +2175,6 @@ const MessagesPage = () => {
           }
         );
 
-        /*
-         * Scroll only if the user is
-         * already close to the bottom.
-         */
         if (
           isNearBottomRef.current
         ) {
@@ -670,7 +2296,6 @@ const MessagesPage = () => {
               ? null
               : current
         );
-
       }
     );
 
@@ -708,12 +2333,427 @@ const MessagesPage = () => {
         );
 
         setMessageMenuId(null);
+
         setDeleteTargetId(
           (current) =>
             current ===
             messageId
               ? null
               : current
+        );
+      }
+    );
+
+    /* ===================================================== */
+    /* INCOMING MEETING */
+    /* ===================================================== */
+
+    newSocket.on(
+      "incoming_meeting",
+      (
+        payload: IncomingMeeting
+      ) => {
+        if (
+          payload.hostId ===
+          currentUser?.id
+        ) {
+          return;
+        }
+
+        const group = groups.find(
+          (item) =>
+            item._id === payload.groupId
+        );
+
+        const host = group?.members.find(
+          (member) =>
+            member._id === payload.hostId
+        );
+
+        setIncomingMeeting({
+          ...payload,
+          hostName:
+            payload.hostName ||
+            host?.name ||
+            "Collaborator",
+          hostPhoto:
+            payload.hostPhoto ||
+            host?.profilePhoto,
+        });
+      }
+    );
+
+    /* ===================================================== */
+    /* MEETING STARTED */
+    /* ===================================================== */
+
+    newSocket.on(
+      "meeting_started",
+      (
+        payload: MeetingStartedPayload
+      ) => {
+        console.log(
+          "Meeting started:",
+          payload
+        );
+      }
+    );
+
+    /* ===================================================== */
+    /* MEETING JOINED */
+    /* ===================================================== */
+
+    newSocket.on(
+      "meeting_joined",
+      (
+        payload: MeetingJoinedPayload
+      ) => {
+        if (
+          payload.groupId !==
+          selectedGroupRef.current?._id
+        ) {
+          return;
+        }
+
+        const nextMeeting: MeetingState =
+          {
+            meetingId:
+              payload.meetingId,
+
+            groupId:
+              payload.groupId,
+
+            hostId:
+              payload.hostId,
+
+            isHost:
+              payload.hostId ===
+              currentUser?.id,
+          };
+
+        setMeeting(nextMeeting);
+        meetingRef.current =
+          nextMeeting;
+
+        addLocalParticipant();
+
+        const participantIds =
+          payload.participants || [];
+
+        for (const userId of participantIds) {
+          if (
+            userId === currentUser?.id
+          ) {
+            continue;
+          }
+
+          const member =
+            findGroupMember(userId);
+
+          const participant: MeetingParticipant =
+            meetingParticipantsRef.current.get(
+              userId
+            ) || {
+              userId,
+              name:
+                member?.name ||
+                "Participant",
+              profilePhoto:
+                member?.profilePhoto,
+              micEnabled: true,
+              cameraEnabled: true,
+              isSpeaking: false,
+            };
+
+          meetingParticipantsRef.current.set(
+            userId,
+            participant
+          );
+        }
+
+        setMeetingParticipants(
+          Array.from(
+            meetingParticipantsRef.current.values()
+          )
+        );
+
+        /*
+         * The joining participant waits for the host to
+         * create the offer. Existing participants are
+         * already known through the participants list.
+         */
+      }
+    );
+
+    /* ===================================================== */
+    /* MEETING PARTICIPANT JOINED */
+    /* ===================================================== */
+
+    newSocket.on(
+      "meeting_participant_joined",
+      (
+        payload: MeetingParticipantPayload
+      ) => {
+        const currentMeeting =
+          meetingRef.current;
+
+        if (
+          !currentMeeting ||
+          payload.meetingId !==
+            currentMeeting.meetingId
+        ) {
+          return;
+        }
+
+        if (
+          payload.userId ===
+          currentUser?.id
+        ) {
+          return;
+        }
+
+        const member =
+          findGroupMember(
+            payload.userId
+          );
+
+        const participant: MeetingParticipant =
+          {
+            userId:
+              payload.userId,
+
+            name:
+              payload.name ||
+              member?.name ||
+              "Participant",
+
+            profilePhoto:
+              payload.profilePhoto ||
+              member?.profilePhoto,
+
+            micEnabled:
+              payload.micEnabled ??
+              true,
+
+            cameraEnabled:
+              payload.cameraEnabled ??
+              true,
+
+            isSpeaking:
+              false,
+          };
+
+        meetingParticipantsRef.current.set(
+          payload.userId,
+          participant
+        );
+
+        setMeetingParticipants(
+          (previous) => {
+            const exists =
+              previous.some(
+                (item) =>
+                  item.userId ===
+                  payload.userId
+              );
+
+            if (exists) {
+              return previous.map(
+                (item) =>
+                  item.userId ===
+                  payload.userId
+                    ? {
+                        ...item,
+                        ...participant,
+                      }
+                    : item
+              );
+            }
+
+            return [
+              ...previous,
+              participant,
+            ];
+          }
+        );
+
+        /*
+         * The host creates the initial offer
+         * for the newly joined participant.
+         */
+        if (
+          currentMeeting.isHost
+        ) {
+          void createOfferForParticipant(
+            payload.userId
+          );
+        }
+      }
+    );
+
+    /* ===================================================== */
+    /* PARTICIPANT LEFT */
+    /* ===================================================== */
+
+    newSocket.on(
+      "meeting_participant_left",
+      (
+        payload: MeetingLeftPayload
+      ) => {
+        if (
+          meetingRef.current
+            ?.meetingId !==
+          payload.meetingId
+        ) {
+          return;
+        }
+
+        const peer =
+          peerConnectionsRef.current.get(
+            payload.userId
+          );
+
+        if (peer) {
+          peer.close();
+
+          peerConnectionsRef.current.delete(
+            payload.userId
+          );
+        }
+
+        meetingParticipantsRef.current.delete(
+          payload.userId
+        );
+
+        setMeetingParticipants(
+          (previous) =>
+            previous.filter(
+              (participant) =>
+                participant.userId !==
+                payload.userId
+            )
+        );
+      }
+    );
+
+    /* ===================================================== */
+    /* MEETING DECLINED */
+    /* ===================================================== */
+
+    newSocket.on(
+      "meeting_declined",
+      ({
+        meetingId,
+        userId,
+        userName,
+      }: {
+        meetingId: string;
+        userId: string;
+        userName?: string;
+      }) => {
+        if (
+          meetingRef.current
+            ?.meetingId !==
+          meetingId
+        ) {
+          return;
+        }
+
+        console.log(
+          `${userName || userId} declined the meeting.`
+        );
+      }
+    );
+
+    /* ===================================================== */
+    /* MEETING CANCELLED */
+    /* ===================================================== */
+
+    newSocket.on(
+      "meeting_cancelled",
+      ({
+        meetingId,
+      }: {
+        meetingId: string;
+      }) => {
+        if (
+          meetingRef.current
+            ?.meetingId !==
+          meetingId
+        ) {
+          return;
+        }
+
+        setMeetingError(
+          "The meeting invitation was cancelled."
+        );
+
+        cleanupMeeting();
+      }
+    );
+
+    /* ===================================================== */
+    /* MEETING ENDED */
+    /* ===================================================== */
+
+    newSocket.on(
+      "meeting_ended",
+      (
+        payload: MeetingEndedPayload
+      ) => {
+        if (
+          meetingRef.current
+            ?.meetingId !==
+          payload.meetingId
+        ) {
+          return;
+        }
+
+        cleanupMeeting();
+      }
+    );
+
+    /* ===================================================== */
+    /* WEBRTC OFFER */
+    /* ===================================================== */
+
+    newSocket.on(
+      "webrtc_offer",
+      (
+        payload: WebRTCOfferPayload
+      ) => {
+        void handleWebRTCOffer(
+          payload
+        );
+      }
+    );
+
+    /* ===================================================== */
+    /* WEBRTC ANSWER */
+    /* ===================================================== */
+
+    newSocket.on(
+      "webrtc_answer",
+      (
+        payload: WebRTCAnswerPayload
+      ) => {
+        void handleWebRTCAnswer(
+          payload
+        );
+      }
+    );
+
+    /* ===================================================== */
+    /* WEBRTC ICE */
+    /* ===================================================== */
+
+    newSocket.on(
+      "webrtc_ice_candidate",
+      (
+        payload: WebRTCIcePayload
+      ) => {
+        void handleWebRTCIce(
+          payload
         );
       }
     );
@@ -743,6 +2783,10 @@ const MessagesPage = () => {
     return () => {
       socketRef.current =
         null;
+
+      closeAllPeerConnections();
+
+      stopLocalStream();
 
       newSocket.disconnect();
     };
@@ -868,10 +2912,6 @@ const MessagesPage = () => {
           loadedMessages
         );
 
-        /*
-         * Always go to the bottom
-         * when opening a conversation.
-         */
         shouldAutoScrollRef.current =
           true;
 
@@ -963,6 +3003,10 @@ const MessagesPage = () => {
   /* ======================================================= */
 
   const closeChat = () => {
+    if (meeting) {
+      leaveMeeting();
+    }
+
     selectedGroupRef.current =
       null;
 
@@ -1080,12 +3124,6 @@ const MessagesPage = () => {
         return;
       }
 
-      /*
-       * -----------------------------------------------------
-       * IMAGE MESSAGE
-       * -----------------------------------------------------
-       */
-
       if (selectedImage) {
         const file =
           selectedImage;
@@ -1101,10 +3139,6 @@ const MessagesPage = () => {
             .toString(36)
             .slice(2)}`;
 
-        /*
-         * Show the image immediately
-         * in the conversation.
-         */
         const optimistic =
           createOptimisticMessage(
             {
@@ -1113,7 +3147,6 @@ const MessagesPage = () => {
               text:
                 caption ||
                 undefined,
-
               mediaUrl:
                 localPreview ||
                 undefined,
@@ -1134,10 +3167,6 @@ const MessagesPage = () => {
 
         setMessageText("");
 
-        /*
-         * Clear composer immediately
-         * so the UI feels responsive.
-         */
         clearSelectedImage();
 
         shouldAutoScrollRef.current =
@@ -1150,41 +3179,26 @@ const MessagesPage = () => {
 
           setError("");
 
-          /*
-           * Upload to Cloudinary.
-           */
           const upload =
             await uploadToCloudinary(
               file
             );
 
-          /*
-           * Replace the temporary local blob URL
-           * with the real Cloudinary URL.
-           *
-           * This is important because the server
-           * sends the saved message back with the
-           * Cloudinary URL. Keeping the blob URL here
-           * prevents the optimistic message from being
-           * matched and replaced, leaving "Sending..."
-           * visible forever.
-           */
-          setMessages((previous) =>
-            previous.map((message) =>
-              message._id === optimistic._id
-                ? {
-                    ...message,
-                    mediaUrl:
-                      upload.secure_url,
-                  }
-                : message
-            )
+          setMessages(
+            (previous) =>
+              previous.map(
+                (message) =>
+                  message._id ===
+                  optimistic._id
+                    ? {
+                        ...message,
+                        mediaUrl:
+                          upload.secure_url,
+                      }
+                    : message
+              )
           );
 
-          /*
-           * If user changed groups while
-           * upload was happening, stop.
-           */
           if (
             selectedGroupRef.current
               ?._id !==
@@ -1193,17 +3207,14 @@ const MessagesPage = () => {
             return;
           }
 
-          /*
-           * Send the actual Cloudinary
-           * URL to Socket.IO.
-           */
           currentSocket.emit(
             "send_message",
             {
               groupId:
                 currentGroup._id,
 
-              type: "image",
+              type:
+                "image",
 
               mediaUrl:
                 upload.secure_url,
@@ -1276,22 +3287,12 @@ const MessagesPage = () => {
         return;
       }
 
-      /*
-       * -----------------------------------------------------
-       * TEXT MESSAGE
-       * -----------------------------------------------------
-       */
-
       const text =
         messageText.trim();
 
       if (!text) {
         return;
       }
-
-      /*
-       * EDIT MODE
-       */
 
       if (editingMessageId) {
         handleSaveEdit();
@@ -1318,9 +3319,6 @@ const MessagesPage = () => {
         optimistic._id
       );
 
-      /*
-       * Immediately show the message.
-       */
       setMessages(
         (previous) => [
           ...previous,
@@ -1333,9 +3331,6 @@ const MessagesPage = () => {
       shouldAutoScrollRef.current =
         true;
 
-      /*
-       * Send to server.
-       */
       currentSocket.emit(
         "send_message",
         {
@@ -1489,14 +3484,7 @@ const MessagesPage = () => {
               response?.message ||
                 "Failed to edit message."
             );
-
-            return;
           }
-
-          /*
-           * Server will emit
-           * message_edited to everyone.
-           */
         }
       );
     };
@@ -1537,9 +3525,6 @@ const MessagesPage = () => {
         null
       );
 
-      /*
-       * Optimistically remove it.
-       */
       setMessages(
         (previous) =>
           previous.filter(
@@ -1568,10 +3553,6 @@ const MessagesPage = () => {
                 "Failed to delete message."
             );
 
-            /*
-             * Refresh history if
-             * optimistic deletion failed.
-             */
             const group =
               selectedGroupRef.current;
 
@@ -1593,9 +3574,6 @@ const MessagesPage = () => {
     (
       event: KeyboardEvent<HTMLInputElement>
     ) => {
-      /*
-       * Escape cancels edit mode.
-       */
       if (
         event.key === "Escape" &&
         editingMessageId
@@ -1607,9 +3585,6 @@ const MessagesPage = () => {
         return;
       }
 
-      /*
-       * Enter sends / saves.
-       */
       if (
         event.key === "Enter" &&
         !event.shiftKey
@@ -1712,9 +3687,6 @@ const MessagesPage = () => {
         }
       );
 
-      /*
-       * Focus caption input.
-       */
       requestAnimationFrame(
         () => {
           document
@@ -1792,9 +3764,6 @@ const MessagesPage = () => {
         optimistic._id
       );
 
-      /*
-       * Immediately show voice note.
-       */
       setMessages(
         (previous) => [
           ...previous,
@@ -1835,13 +3804,29 @@ const MessagesPage = () => {
             audioFile
           );
 
+        setMessages(
+          (previous) =>
+            previous.map(
+              (message) =>
+                message._id ===
+                optimistic._id
+                  ? {
+                      ...message,
+                      mediaUrl:
+                        upload.secure_url,
+                    }
+                  : message
+            )
+        );
+
         currentSocket.emit(
           "send_message",
           {
             groupId:
               currentGroup._id,
 
-            type: "audio",
+            type:
+              "audio",
 
             mediaUrl:
               upload.secure_url,
@@ -1996,8 +3981,6 @@ const MessagesPage = () => {
 
         recorder.onstop =
           async () => {
-            stopRecordingTimer();
-
             stream
               .getTracks()
               .forEach(
@@ -2116,6 +4099,8 @@ const MessagesPage = () => {
 
       mediaRecorderRef.current =
         null;
+
+      stopRecordingTimer();
     };
 
   /* ======================================================= */
@@ -2193,7 +4178,7 @@ const MessagesPage = () => {
     };
 
   /* ======================================================= */
-  /* CLOSE MENU WHEN CLICKING OUTSIDE */
+  /* CLOSE MENU OUTSIDE */
   /* ======================================================= */
 
   useEffect(() => {
@@ -2282,8 +4267,7 @@ const MessagesPage = () => {
 
       const minutes =
         Math.floor(
-          safeSeconds /
-            60
+          safeSeconds / 60
         );
 
       const remaining =
@@ -2340,6 +4324,349 @@ const MessagesPage = () => {
     };
 
   /* ======================================================= */
+  /* FULLSCREEN */
+  /* ======================================================= */
+
+  const toggleVideoFullscreen =
+    async (
+      element: HTMLVideoElement
+    ) => {
+      try {
+        if (
+          document.fullscreenElement
+        ) {
+          await document.exitFullscreen();
+
+          return;
+        }
+
+        await element.requestFullscreen();
+      } catch (error) {
+        console.error(
+          "Fullscreen failed:",
+          error
+        );
+      }
+    };
+
+  /* ======================================================= */
+  /* MEETING PARTICIPANTS */
+  /* ======================================================= */
+
+  const visibleMeetingParticipants =
+    meetingParticipants.filter(
+      (participant) =>
+        participant.userId !==
+        currentUser?.id
+    );
+
+  const localMeetingParticipant =
+    meetingParticipants.find(
+      (participant) =>
+        participant.userId ===
+        currentUser?.id
+    );
+
+  /* ======================================================= */
+  /* MEETING OVERLAY */
+  /* ======================================================= */
+
+  const renderMeetingOverlay =
+    () => {
+      if (!meeting) {
+        return null;
+      }
+
+      const participantCount =
+        meetingParticipants.length;
+
+      const remoteCount =
+        visibleMeetingParticipants.length;
+
+      const gridClass =
+        participantCount <= 1
+          ? "grid-cols-1"
+          : participantCount === 2
+            ? "grid-cols-1 sm:grid-cols-2"
+            : participantCount <= 4
+              ? "grid-cols-1 sm:grid-cols-2"
+              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+
+      return (
+        <div
+          className={`fixed inset-0 z-[200] flex flex-col bg-[#07111f] text-white ${
+            isMeetingFullscreen
+              ? ""
+              : ""
+          }`}
+        >
+          {/* ================================================= */}
+          {/* MEETING TOP BAR */}
+          {/* ================================================= */}
+
+          <div className="flex h-[64px] shrink-0 items-center justify-between border-b border-white/10 bg-[#0b1728] px-3 sm:px-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+                <PhoneCall
+                  size={17}
+                />
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-white">
+                  {selectedGroup?.name ||
+                    selectedGroup?.project
+                      ?.title ||
+                    "Collaboration Meeting"}
+                </p>
+
+                <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                  <span>
+                    {formatMeetingTime(
+                      meetingElapsed
+                    )}
+                  </span>
+
+                  <span>•</span>
+
+                  <span>
+                    {participantCount}{" "}
+                    {participantCount ===
+                    1
+                      ? "participant"
+                      : "participants"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <div className="hidden items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-[10px] font-semibold text-slate-300 sm:flex">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                Live
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setIsMeetingFullscreen(
+                    (value) =>
+                      !value
+                  )
+                }
+                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-300 transition hover:bg-white/10 hover:text-white"
+                aria-label="Toggle meeting fullscreen"
+              >
+                <Maximize2
+                  size={17}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* ================================================= */}
+          {/* MEETING ERROR */}
+          {/* ================================================= */}
+
+          {meetingError && (
+            <div className="absolute left-1/2 top-[74px] z-[220] flex w-[calc(100%-24px)] max-w-md -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 backdrop-blur-xl">
+              <p className="text-xs font-medium text-red-200">
+                {meetingError}
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMeetingError(
+                    ""
+                  )
+                }
+                className="text-red-300 hover:text-white"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          )}
+
+          {/* ================================================= */}
+          {/* PARTICIPANT GRID */}
+          {/* ================================================= */}
+
+          <div className="relative flex-1 overflow-y-auto p-3 sm:p-5 md:p-6">
+            <div
+              className={`mx-auto grid h-full max-w-7xl auto-rows-fr gap-3 ${gridClass}`}
+            >
+              {localMeetingParticipant && (
+                <MeetingVideoTile
+                  participant={{
+                    ...localMeetingParticipant,
+                    stream:
+                      localStream ||
+                      localMeetingParticipant.stream,
+                    micEnabled:
+                      isMicEnabled,
+                    cameraEnabled:
+                      isCameraEnabled,
+                  }}
+                  isLocal
+                  onToggleFullscreen={
+                    toggleVideoFullscreen
+                  }
+                />
+              )}
+
+              {visibleMeetingParticipants.map(
+                (
+                  participant
+                ) => (
+                  <MeetingVideoTile
+                    key={
+                      participant.userId
+                    }
+                    participant={
+                      participant
+                    }
+                    onToggleFullscreen={
+                      toggleVideoFullscreen
+                    }
+                  />
+                )
+              )}
+
+              {remoteCount === 0 &&
+                participantCount ===
+                  1 && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="rounded-3xl bg-white/5 px-6 py-5 text-center backdrop-blur">
+                      <Users
+                        size={28}
+                        className="mx-auto mb-3 text-slate-400"
+                      />
+
+                      <p className="text-sm font-semibold text-white">
+                        Waiting for others
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-400">
+                        Invite your collaborators
+                        to join the meeting.
+                      </p>
+                    </div>
+                  </div>
+                )}
+            </div>
+          </div>
+
+          {/* ================================================= */}
+          {/* MEETING CONTROLS */}
+          {/* ================================================= */}
+
+          <div className="shrink-0 border-t border-white/10 bg-[#0b1728] px-3 py-4 sm:px-5">
+            <div className="mx-auto flex max-w-4xl items-center justify-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={
+                  toggleMicrophone
+                }
+                className={`flex h-12 w-12 items-center justify-center rounded-full transition active:scale-95 ${
+                  isMicEnabled
+                    ? "bg-white/10 text-white hover:bg-white/15"
+                    : "bg-red-500 text-white hover:bg-red-600"
+                }`}
+                aria-label={
+                  isMicEnabled
+                    ? "Mute microphone"
+                    : "Unmute microphone"
+                }
+              >
+                {isMicEnabled ? (
+                  <Mic size={19} />
+                ) : (
+                  <MicOff size={19} />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void toggleCamera()
+                }
+                className={`flex h-12 w-12 items-center justify-center rounded-full transition active:scale-95 ${
+                  isCameraEnabled
+                    ? "bg-white/10 text-white hover:bg-white/15"
+                    : "bg-red-500 text-white hover:bg-red-600"
+                }`}
+                aria-label={
+                  isCameraEnabled
+                    ? "Turn camera off"
+                    : "Turn camera on"
+                }
+              >
+                {isCameraEnabled ? (
+                  <Video size={19} />
+                ) : (
+                  <VideoOff
+                    size={19}
+                  />
+                )}
+              </button>
+
+              <div className="mx-1 h-8 w-px bg-white/10" />
+
+              {meeting.isHost ? (
+                <button
+                  type="button"
+                  onClick={
+                    endMeeting
+                  }
+                  className="flex h-12 items-center gap-2 rounded-full bg-red-500 px-5 text-xs font-bold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-600 active:scale-95"
+                >
+                  <PhoneOff
+                    size={17}
+                  />
+
+                  <span className="hidden sm:inline">
+                    End meeting
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={
+                    leaveMeeting
+                  }
+                  className="flex h-12 items-center gap-2 rounded-full bg-red-500 px-5 text-xs font-bold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-600 active:scale-95"
+                >
+                  <PhoneOff
+                    size={17}
+                  />
+
+                  <span className="hidden sm:inline">
+                    Leave
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center justify-center gap-4 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1">
+                <Volume2 size={11} />
+                Voice enabled
+              </span>
+
+              <span>•</span>
+
+              <span>
+                {participantCount}{" "}
+                connected
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+  /* ======================================================= */
   /* CLEANUP */
   /* ======================================================= */
 
@@ -2367,6 +4694,10 @@ const MessagesPage = () => {
       ) {
         recorder.stop();
       }
+
+      closeAllPeerConnections();
+
+      stopLocalStream();
     };
   }, []);
 
@@ -2376,155 +4707,235 @@ const MessagesPage = () => {
 
   if (!selectedGroup) {
     return (
-      <div className="min-h-screen bg-[#f5f8fc] px-4 py-5 sm:px-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-5xl">
-
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 shadow-sm">
-                <MessageCircle
-                  size={24}
-                />
-              </div>
-
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-                  Messages
-                </h1>
-
-                <p className="text-sm text-slate-500">
-                  Your collaboration conversations
-                </p>
-              </div>
-            </div>
-
-            {groups.length >
-              0 && (
-              <div className="hidden rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-500 shadow-sm sm:block">
-                {groups.length}{" "}
-                {groups.length ===
-                1
-                  ? "conversation"
-                  : "conversations"}
-              </div>
-            )}
-          </div>
-
-          {loading && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-              <Loader2
-                size={30}
-                className="mx-auto mb-4 animate-spin text-blue-600"
-              />
-
-              <p className="text-sm text-slate-500">
-                Loading conversations...
-              </p>
-            </div>
-          )}
-
-          {!loading &&
-            error && (
-              <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
-                <p className="text-sm font-medium text-red-600">
-                  {error}
-                </p>
-              </div>
-            )}
-
-          {!loading &&
-            !error &&
-            groups.length ===
-              0 && (
-              <div className="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
-                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-500">
+      <>
+        <div className="min-h-screen bg-[#f5f8fc] px-4 py-5 sm:px-6 md:px-8 md:py-8">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 shadow-sm">
                   <MessageCircle
-                    size={30}
+                    size={24}
                   />
                 </div>
 
-                <h2 className="text-lg font-bold text-slate-800">
-                  No conversations yet
-                </h2>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight text-slate-800">
+                    Messages
+                  </h1>
 
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                  Once you accept a
-                  collaboration request,
-                  your project group will
-                  appear here.
+                  <p className="text-sm text-slate-500">
+                    Your collaboration conversations
+                  </p>
+                </div>
+              </div>
+
+              {groups.length >
+                0 && (
+                <div className="hidden rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-500 shadow-sm sm:block">
+                  {groups.length}{" "}
+                  {groups.length ===
+                  1
+                    ? "conversation"
+                    : "conversations"}
+                </div>
+              )}
+            </div>
+
+            {loading && (
+              <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+                <Loader2
+                  size={30}
+                  className="mx-auto mb-4 animate-spin text-blue-600"
+                />
+
+                <p className="text-sm text-slate-500">
+                  Loading conversations...
                 </p>
               </div>
             )}
 
-          {!loading &&
-            !error &&
-            groups.length >
-              0 && (
-              <div className="grid gap-3 md:grid-cols-2">
-                {groups.map(
-                  (group) => (
-                    <button
-                      key={
-                        group._id
-                      }
-                      type="button"
-                      onClick={() =>
-                        openGroup(
-                          group
-                        )
-                      }
-                      className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md active:scale-[0.99] md:p-5"
-                    >
-                      <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-600">
-                        <Users
-                          size={24}
-                        />
+            {!loading &&
+              error && (
+                <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
+                  <p className="text-sm font-medium text-red-600">
+                    {error}
+                  </p>
+                </div>
+              )}
 
-                        <span className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-blue-600 px-1 text-[9px] font-bold text-white">
-                          {
+            {!loading &&
+              !error &&
+              groups.length ===
+                0 && (
+                <div className="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+                  <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-500">
+                    <MessageCircle
+                      size={30}
+                    />
+                  </div>
+
+                  <h2 className="text-lg font-bold text-slate-800">
+                    No conversations yet
+                  </h2>
+
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+                    Once you accept a
+                    collaboration request,
+                    your project group will
+                    appear here.
+                  </p>
+                </div>
+              )}
+
+            {!loading &&
+              !error &&
+              groups.length >
+                0 && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {groups.map(
+                    (group) => (
+                      <button
+                        key={
+                          group._id
+                        }
+                        type="button"
+                        onClick={() =>
+                          openGroup(
                             group
-                              .members
-                              .length
-                          }
-                        </span>
-                      </div>
+                          )
+                        }
+                        className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md active:scale-[0.99] md:p-5"
+                      >
+                        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-600">
+                          <Users
+                            size={24}
+                          />
 
-                      <div className="min-w-0 flex-1">
-                        <h2 className="truncate text-[15px] font-bold text-slate-800">
-                          {group.name ||
-                            group
-                              .project
-                              ?.title}
-                        </h2>
+                          <span className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-blue-600 px-1 text-[9px] font-bold text-white">
+                            {
+                              group
+                                .members
+                                .length
+                            }
+                          </span>
+                        </div>
 
-                        <p className="mt-1 truncate text-sm text-slate-500">
-                          {group.members
-                            .map(
-                              (
-                                member
-                              ) =>
-                                member.name
-                            )
-                            .join(
-                              ", "
-                            )}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <h2 className="truncate text-[15px] font-bold text-slate-800">
+                            {group.name ||
+                              group
+                                .project
+                                ?.title}
+                          </h2>
 
-                        <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-blue-500">
-                          Open conversation
-                        </p>
-                      </div>
+                          <p className="mt-1 truncate text-sm text-slate-500">
+                            {group.members
+                              .map(
+                                (
+                                  member
+                                ) =>
+                                  member.name
+                              )
+                              .join(
+                                ", "
+                              )}
+                          </p>
 
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg text-slate-300 transition group-hover:bg-blue-50 group-hover:text-blue-600">
-                        →
-                      </div>
-                    </button>
-                  )
-                )}
-              </div>
-            )}
+                          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-blue-500">
+                            Open conversation
+                          </p>
+                        </div>
+
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg text-slate-300 transition group-hover:bg-blue-50 group-hover:text-blue-600">
+                          →
+                        </div>
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+          </div>
         </div>
-      </div>
+
+        {/* ================================================= */}
+        {/* INCOMING MEETING WHEN CHAT IS CLOSED */}
+        {/* ================================================= */}
+
+        {incomingMeeting && (
+          <div className="fixed inset-0 z-[180] flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
+            <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-7 text-center text-white">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/15 ring-4 ring-white/10">
+                  {incomingMeeting.hostPhoto ? (
+                    <img
+                      src={
+                        incomingMeeting.hostPhoto
+                      }
+                      alt={
+                        incomingMeeting.hostName
+                      }
+                      className="h-20 w-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <PhoneCall
+                      size={30}
+                    />
+                  )}
+                </div>
+
+                <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-blue-100">
+                  Incoming meeting
+                </p>
+
+                <h2 className="mt-1 text-xl font-bold">
+                  {
+                    incomingMeeting.hostName
+                  }
+                </h2>
+
+                <p className="mt-1 text-sm text-blue-100">
+                  wants to start a collaboration meeting
+                </p>
+              </div>
+
+              <div className="flex gap-3 p-5">
+                <button
+                  type="button"
+                  onClick={
+                    declineMeeting
+                  }
+                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  <PhoneOff
+                    size={16}
+                  />
+                  Decline
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void acceptMeeting()
+                  }
+                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                >
+                  {meetingLoading ? (
+                    <Loader2
+                      size={17}
+                      className="animate-spin"
+                    />
+                  ) : (
+                    <PhoneCall
+                      size={16}
+                    />
+                  )}
+                  Join
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -2533,1178 +4944,1197 @@ const MessagesPage = () => {
   /* ======================================================= */
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-[#f5f8fc] p-0 md:p-5">
-      <div className="relative mx-auto flex h-full max-w-7xl overflow-hidden bg-white shadow-sm md:h-[calc(100dvh-40px)] md:rounded-3xl md:border md:border-slate-200">
+    <>
+      <div className="h-[100dvh] overflow-hidden bg-[#f5f8fc] p-0 md:p-5">
+        <div className="relative mx-auto flex h-full max-w-7xl overflow-hidden bg-white shadow-sm md:h-[calc(100dvh-40px)] md:rounded-3xl md:border md:border-slate-200">
+          <div className="flex min-w-0 flex-1 flex-col">
+            {/* ================================================= */}
+            {/* HEADER */}
+            {/* ================================================= */}
 
-        {/* ================================================= */}
-        {/* CHAT AREA */}
-        {/* ================================================= */}
+            <div className="flex min-h-[68px] shrink-0 items-center border-b border-slate-200 bg-white px-3 sm:px-4 md:px-6">
+              <button
+                type="button"
+                onClick={
+                  closeChat
+                }
+                className="mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 active:scale-95"
+                aria-label="Back to conversations"
+              >
+                <ArrowLeft
+                  size={20}
+                />
+              </button>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-
-          {/* ================================================= */}
-          {/* HEADER */}
-          {/* ================================================= */}
-
-          <div className="flex min-h-[68px] shrink-0 items-center border-b border-slate-200 bg-white px-3 sm:px-4 md:px-6">
-
-            <button
-              type="button"
-              onClick={
-                closeChat
-              }
-              className="mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 active:scale-95"
-              aria-label="Back to conversations"
-            >
-              <ArrowLeft
-                size={20}
-              />
-            </button>
-
-            <Avatar
-              name={
-                selectedGroup.name ||
-                selectedGroup
-                  .project
-                  ?.title
-              }
-              size="normal"
-            />
-
-            <div className="ml-3 min-w-0 flex-1">
-              <h1 className="truncate text-[15px] font-bold text-slate-800">
-                {selectedGroup.name ||
+              <Avatar
+                name={
+                  selectedGroup.name ||
                   selectedGroup
                     .project
-                    ?.title}
-              </h1>
+                    ?.title
+                }
+                size="normal"
+              />
+
+              <div className="ml-3 min-w-0 flex-1">
+                <h1 className="truncate text-[15px] font-bold text-slate-800">
+                  {selectedGroup.name ||
+                    selectedGroup
+                      .project
+                      ?.title}
+                </h1>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowMembers(
+                      (previous) =>
+                        !previous
+                    )
+                  }
+                  className="text-xs text-slate-500 transition hover:text-blue-600"
+                >
+                  {
+                    selectedGroup
+                      .members
+                      .length
+                  }{" "}
+                  {selectedGroup
+                    .members
+                    .length ===
+                  1
+                    ? "member"
+                    : "members"}
+                </button>
+              </div>
+
+              <div
+                className={`mr-1 hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold sm:flex ${
+                  socket?.connected
+                    ? "bg-emerald-50 text-emerald-600"
+                    : "bg-amber-50 text-amber-600"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    socket?.connected
+                      ? "bg-emerald-500"
+                      : "bg-amber-500"
+                  }`}
+                />
+
+                {socket?.connected
+                  ? "Connected"
+                  : "Connecting"}
+              </div>
+
+              {/* ================================================= */}
+              {/* MEETING BUTTON */}
+              {/* ================================================= */}
+
+              <button
+                type="button"
+                onClick={() =>
+                  void startMeeting()
+                }
+                disabled={
+                  meetingLoading ||
+                  !!meeting ||
+                  !socket?.connected
+                }
+                className="mr-1 flex h-10 items-center gap-2 rounded-full bg-blue-600 px-3 text-white shadow-sm transition hover:bg-blue-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
+                aria-label="Start collaboration meeting"
+                title="Start meeting"
+              >
+                {meetingLoading ? (
+                  <Loader2
+                    size={17}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <Video
+                    size={17}
+                  />
+                )}
+
+                <span className="hidden text-xs font-bold sm:inline">
+                  Meeting
+                </span>
+              </button>
 
               <button
                 type="button"
                 onClick={() =>
                   setShowMembers(
-                    (
-                      previous
-                    ) =>
+                    (previous) =>
                       !previous
                   )
                 }
-                className="text-xs text-slate-500 transition hover:text-blue-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 active:scale-95"
+                aria-label="Show members"
               >
-                {
-                  selectedGroup
-                    .members
-                    .length
-                }{" "}
-                {selectedGroup
-                  .members
-                  .length ===
-                1
-                  ? "member"
-                  : "members"}
+                <Users
+                  size={20}
+                />
               </button>
-            </div>
-
-            <div
-              className={`mr-1 hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold sm:flex ${
-                socket?.connected
-                  ? "bg-emerald-50 text-emerald-600"
-                  : "bg-amber-50 text-amber-600"
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  socket?.connected
-                    ? "bg-emerald-500"
-                    : "bg-amber-500"
-                }`}
-              />
-
-              {socket?.connected
-                ? "Connected"
-                : "Connecting"}
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                setShowMembers(
-                  (
-                    previous
-                  ) =>
-                    !previous
-                )
-              }
-              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 active:scale-95"
-              aria-label="Show members"
-            >
-              <Users
-                size={20}
-              />
-            </button>
-
-            <button
-              type="button"
-              className="ml-1 hidden h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 sm:flex"
-              aria-label="More options"
-            >
-              <MoreVertical
-                size={20}
-              />
-            </button>
-          </div>
-
-          {/* ================================================= */}
-          {/* ERROR */}
-          {/* ================================================= */}
-
-          {error && (
-            <div className="z-20 flex shrink-0 items-center justify-between border-b border-red-100 bg-red-50 px-4 py-2">
-              <p className="min-w-0 truncate text-xs font-medium text-red-600">
-                {error}
-              </p>
 
               <button
                 type="button"
-                onClick={() =>
-                  setError("")
-                }
-                className="ml-3 shrink-0 rounded-full p-1 text-red-400 hover:bg-red-100 hover:text-red-600"
+                className="ml-1 hidden h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 sm:flex"
+                aria-label="More options"
               >
-                <X
-                  size={14}
+                <MoreVertical
+                  size={20}
                 />
               </button>
             </div>
-          )}
 
-          {/* ================================================= */}
-          {/* MESSAGE AREA */}
-          {/* ================================================= */}
+            {/* ================================================= */}
+            {/* ERROR */}
+            {/* ================================================= */}
 
-          <div
-            ref={
-              messagesContainerRef
-            }
-            onScroll={
-              updateScrollPosition
-            }
-            className="relative flex-1 overflow-y-auto bg-[#f4f7fb] px-3 py-5 sm:px-5 md:px-8"
-          >
+            {error && (
+              <div className="z-20 flex shrink-0 items-center justify-between border-b border-red-100 bg-red-50 px-4 py-2">
+                <p className="min-w-0 truncate text-xs font-medium text-red-600">
+                  {error}
+                </p>
 
-            <div className="pointer-events-none absolute inset-0 opacity-40">
-              <div className="absolute left-10 top-10 h-24 w-24 rounded-full bg-blue-100 blur-3xl" />
-
-              <div className="absolute bottom-20 right-10 h-32 w-32 rounded-full bg-indigo-100 blur-3xl" />
-            </div>
-
-            {/* NEW MESSAGE BUTTON */}
-
-            {newMessagesCount >
-              0 && (
-              <button
-                type="button"
-                onClick={() =>
-                  scrollToBottom(
-                    "smooth"
-                  )
-                }
-                className="sticky top-2 z-30 mx-auto flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-blue-700 active:scale-95"
-              >
-                <span>
-                  ↓
-                </span>
-
-                {newMessagesCount}{" "}
-                {newMessagesCount ===
-                1
-                  ? "new message"
-                  : "new messages"}
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setError("")
+                  }
+                  className="ml-3 shrink-0 rounded-full p-1 text-red-400 hover:bg-red-100 hover:text-red-600"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             )}
 
-            <div className="relative z-10 mx-auto max-w-4xl">
+            {/* ================================================= */}
+            {/* MESSAGE AREA */}
+            {/* ================================================= */}
 
-              {!messagesLoading &&
-                messages.length >
-                  0 && (
-                  <div className="mb-6 flex justify-center">
-                    <span className="rounded-full border border-slate-200 bg-white/90 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 shadow-sm backdrop-blur">
-                      Collaboration chat
-                    </span>
-                  </div>
-                )}
+            <div
+              ref={
+                messagesContainerRef
+              }
+              onScroll={
+                updateScrollPosition
+              }
+              className="relative flex-1 overflow-y-auto bg-[#f4f7fb] px-3 py-5 sm:px-5 md:px-8"
+            >
+              <div className="pointer-events-none absolute inset-0 opacity-40">
+                <div className="absolute left-10 top-10 h-24 w-24 rounded-full bg-blue-100 blur-3xl" />
 
-              {messagesLoading && (
-                <div className="flex min-h-[400px] items-center justify-center">
-                  <div className="text-center">
-                    <Loader2
-                      size={30}
-                      className="mx-auto mb-4 animate-spin text-blue-600"
-                    />
+                <div className="absolute bottom-20 right-10 h-32 w-32 rounded-full bg-indigo-100 blur-3xl" />
+              </div>
 
-                    <p className="text-sm text-slate-500">
-                      Loading messages...
-                    </p>
-                  </div>
-                </div>
+              {newMessagesCount >
+                0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    scrollToBottom(
+                      "smooth"
+                    )
+                  }
+                  className="sticky top-2 z-30 mx-auto flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-blue-700 active:scale-95"
+                >
+                  <span>
+                    ↓
+                  </span>
+
+                  {newMessagesCount}{" "}
+                  {newMessagesCount ===
+                  1
+                    ? "new message"
+                    : "new messages"}
+                </button>
               )}
 
-              {!messagesLoading &&
-                messages.length ===
-                  0 && (
+              <div className="relative z-10 mx-auto max-w-4xl">
+                {!messagesLoading &&
+                  messages.length >
+                    0 && (
+                    <div className="mb-6 flex justify-center">
+                      <span className="rounded-full border border-slate-200 bg-white/90 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 shadow-sm backdrop-blur">
+                        Collaboration chat
+                      </span>
+                    </div>
+                  )}
+
+                {messagesLoading && (
                   <div className="flex min-h-[400px] items-center justify-center">
-                    <div className="max-w-sm text-center">
-                      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-blue-500 shadow-sm">
-                        <MessageCircle
-                          size={30}
-                        />
-                      </div>
+                    <div className="text-center">
+                      <Loader2
+                        size={30}
+                        className="mx-auto mb-4 animate-spin text-blue-600"
+                      />
 
-                      <h2 className="text-base font-bold text-slate-700">
-                        Start the conversation
-                      </h2>
-
-                      <p className="mt-2 text-sm leading-6 text-slate-500">
-                        Discuss your project,
-                        share ideas, send images
-                        and use voice notes to
-                        build together.
+                      <p className="text-sm text-slate-500">
+                        Loading messages...
                       </p>
                     </div>
                   </div>
                 )}
 
-              {/* ================================================= */}
-              {/* MESSAGE LIST */}
-              {/* ================================================= */}
-
-              <div className="space-y-3">
-
-                {messages.map(
-                  (message) => {
-                    const isMine =
-                      currentUser?.id ===
-                      message.sender?._id;
-
-                    const messageType =
-                      message.type ||
-                      "text";
-
-                    const isMenuOpen =
-                      messageMenuId ===
-                      message._id;
-
-                    return (
-                      <div
-                        key={
-                          message._id
-                        }
-                        className={`flex animate-[messageIn_180ms_ease-out] ${
-                          isMine
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                        style={{
-                          animation:
-                            "messageIn 180ms ease-out",
-                        }}
-                      >
-
-                        <div
-                          className={`flex max-w-[94%] items-end gap-2 sm:max-w-[85%] md:max-w-[68%] ${
-                            isMine
-                              ? "flex-row-reverse"
-                              : ""
-                          }`}
-                        >
-
-                          <Avatar
-                            name={
-                              message
-                                .sender
-                                ?.name
-                            }
-                            photo={
-                              message
-                                .sender
-                                ?.profilePhoto
-                            }
-                            size="small"
+                {!messagesLoading &&
+                  messages.length ===
+                    0 && (
+                    <div className="flex min-h-[400px] items-center justify-center">
+                      <div className="max-w-sm text-center">
+                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-blue-500 shadow-sm">
+                          <MessageCircle
+                            size={30}
                           />
+                        </div>
 
-                          <div className="relative min-w-0">
+                        <h2 className="text-base font-bold text-slate-700">
+                          Start the conversation
+                        </h2>
 
-                            {/* ================================================= */}
-                            {/* ACTION MENU */}
-                            {/* ================================================= */}
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                          Discuss your project,
+                          share ideas, send images
+                          and use voice notes to
+                          build together.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                            {isMenuOpen &&
-                              isMine && (
-                                <div
-                                  onClick={(
-                                    event
-                                  ) =>
-                                    event.stopPropagation()
-                                  }
-                                  className={`absolute bottom-full z-50 mb-2 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl ${
-                                    isMine
-                                      ? "right-0"
-                                      : "left-0"
-                                  }`}
-                                >
+                <div className="space-y-3">
+                  {messages.map(
+                    (message) => {
+                      const isMine =
+                        currentUser?.id ===
+                        message.sender?._id;
 
-                                  {messageType ===
-                                    "text" && (
+                      const messageType =
+                        message.type ||
+                        "text";
+
+                      const isMenuOpen =
+                        messageMenuId ===
+                        message._id;
+
+                      return (
+                        <div
+                          key={
+                            message._id
+                          }
+                          className={`flex animate-[messageIn_180ms_ease-out] ${
+                            isMine
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
+                          style={{
+                            animation:
+                              "messageIn 180ms ease-out",
+                          }}
+                        >
+                          <div
+                            className={`flex max-w-[94%] items-end gap-2 sm:max-w-[85%] md:max-w-[68%] ${
+                              isMine
+                                ? "flex-row-reverse"
+                                : ""
+                            }`}
+                          >
+                            <Avatar
+                              name={
+                                message
+                                  .sender
+                                  ?.name
+                              }
+                              photo={
+                                message
+                                  .sender
+                                  ?.profilePhoto
+                              }
+                              size="small"
+                            />
+
+                            <div className="relative min-w-0">
+                              {isMenuOpen &&
+                                isMine && (
+                                  <div
+                                    onClick={(
+                                      event
+                                    ) =>
+                                      event.stopPropagation()
+                                    }
+                                    className="absolute bottom-full right-0 z-50 mb-2 w-36 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
+                                  >
+                                    {messageType ===
+                                      "text" && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          startEditing(
+                                            message
+                                          )
+                                        }
+                                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-600"
+                                      >
+                                        <Edit3
+                                          size={
+                                            15
+                                          }
+                                        />
+
+                                        Edit
+                                      </button>
+                                    )}
+
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        startEditing(
-                                          message
+                                        requestDeleteMessage(
+                                          message._id
                                         )
                                       }
-                                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-600"
+                                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
                                     >
-                                      <Edit3
+                                      <Trash2
                                         size={
                                           15
                                         }
                                       />
 
-                                      Edit
+                                      Delete
                                     </button>
-                                  )}
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      requestDeleteMessage(
-                                        message._id
-                                      )
-                                    }
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                                  >
-                                    <Trash2
-                                      size={
-                                        15
-                                      }
-                                    />
-
-                                    Delete
-                                  </button>
-                                </div>
-                              )}
-
-                            {/* ================================================= */}
-                            {/* MESSAGE BUBBLE */}
-                            {/* ================================================= */}
-
-                            <div
-                              onTouchStart={() =>
-                                startLongPress(
-                                  message
-                                )
-                              }
-                              onTouchEnd={
-                                clearLongPress
-                              }
-                              onTouchMove={
-                                clearLongPress
-                              }
-                              onMouseDown={() =>
-                                startLongPress(
-                                  message
-                                )
-                              }
-                              onMouseUp={
-                                clearLongPress
-                              }
-                              onMouseLeave={
-                                clearLongPress
-                              }
-                              onContextMenu={(
-                                event
-                              ) =>
-                                handleMessageContextMenu(
-                                  event,
-                                  message
-                                )
-                              }
-                              className={`group relative min-w-0 rounded-2xl shadow-sm transition duration-150 ${
-                                isMine
-                                  ? "rounded-br-md bg-blue-600 text-white"
-                                  : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
-                              } ${
-                                messageType ===
-                                "image"
-                                  ? "p-1.5"
-                                  : "px-4 py-2.5"
-                              } ${
-                                message.optimistic
-                                  ? "opacity-80"
-                                  : ""
-                              }`}
-                            >
-
-                              {/* ================================================= */}
-                              {/* SENDER NAME */}
-                              {/* ================================================= */}
-
-                              {messageType !==
-                                "image" && (
-                                <p
-                                  className={`mb-1 text-[11px] font-bold ${
-                                    isMine
-                                      ? "text-blue-100"
-                                      : "text-blue-600"
-                                  }`}
-                                >
-                                  {isMine
-                                    ? "You"
-                                    : message
-                                        .sender
-                                        ?.name ||
-                                      "Unknown user"}
-                                </p>
-                              )}
-
-                              {/* ================================================= */}
-                              {/* TEXT */}
-                              {/* ================================================= */}
-
-                              {messageType ===
-                                "text" && (
-                                <p className="whitespace-pre-wrap break-words text-[14px] leading-6">
-                                  {
-                                    message.text
-                                  }
-                                </p>
-                              )}
-
-                              {/* ================================================= */}
-                              {/* IMAGE */}
-                              {/* ================================================= */}
-
-                              {messageType ===
-                                "image" &&
-                                message.mediaUrl && (
-                                  <a
-                                    href={
-                                      message.optimistic
-                                        ? undefined
-                                        : message.mediaUrl
-                                    }
-                                    target={
-                                      message.optimistic
-                                        ? undefined
-                                        : "_blank"
-                                    }
-                                    rel="noreferrer"
-                                    onClick={(
-                                      event
-                                    ) => {
-                                      if (
-                                        message.optimistic
-                                      ) {
-                                        event.preventDefault();
-                                      }
-                                    }}
-                                    className="relative block overflow-hidden rounded-xl"
-                                  >
-                                    <img
-                                      src={
-                                        message.mediaUrl
-                                      }
-                                      alt="Shared image"
-                                      loading="lazy"
-                                      className="max-h-[360px] w-auto max-w-full rounded-xl object-contain transition duration-200 hover:opacity-95"
-                                    />
-
-                                    {message.optimistic && (
-                                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/25 backdrop-blur-[1px]">
-                                        <div className="flex items-center gap-2 rounded-full bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg">
-                                          <Loader2
-                                            size={
-                                              14
-                                            }
-                                            className="animate-spin text-blue-600"
-                                          />
-
-                                          Sending...
-                                        </div>
-                                      </div>
-                                    )}
-                                  </a>
+                                  </div>
                                 )}
 
-                              {/* ================================================= */}
-                              {/* IMAGE CAPTION */}
-                              {/* ================================================= */}
-
-                              {messageType ===
-                                "image" &&
-                                message.text && (
+                              <div
+                                onTouchStart={() =>
+                                  startLongPress(
+                                    message
+                                  )
+                                }
+                                onTouchEnd={
+                                  clearLongPress
+                                }
+                                onTouchMove={
+                                  clearLongPress
+                                }
+                                onMouseDown={() =>
+                                  startLongPress(
+                                    message
+                                  )
+                                }
+                                onMouseUp={
+                                  clearLongPress
+                                }
+                                onMouseLeave={
+                                  clearLongPress
+                                }
+                                onContextMenu={(
+                                  event
+                                ) =>
+                                  handleMessageContextMenu(
+                                    event,
+                                    message
+                                  )
+                                }
+                                className={`group relative min-w-0 rounded-2xl shadow-sm transition duration-150 ${
+                                  isMine
+                                    ? "rounded-br-md bg-blue-600 text-white"
+                                    : "rounded-bl-md border border-slate-200 bg-white text-slate-800"
+                                } ${
+                                  messageType ===
+                                  "image"
+                                    ? "p-1.5"
+                                    : "px-4 py-2.5"
+                                } ${
+                                  message.optimistic
+                                    ? "opacity-80"
+                                    : ""
+                                }`}
+                              >
+                                {messageType !==
+                                  "image" && (
                                   <p
-                                    className={`px-1.5 pt-2 text-[14px] leading-5 ${
+                                    className={`mb-1 text-[11px] font-bold ${
                                       isMine
-                                        ? "text-white"
-                                        : "text-slate-700"
+                                        ? "text-blue-100"
+                                        : "text-blue-600"
                                     }`}
                                   >
+                                    {isMine
+                                      ? "You"
+                                      : message
+                                          .sender
+                                          ?.name ||
+                                        "Unknown user"}
+                                  </p>
+                                )}
+
+                                {messageType ===
+                                  "text" && (
+                                  <p className="whitespace-pre-wrap break-words text-[14px] leading-6">
                                     {
                                       message.text
                                     }
                                   </p>
                                 )}
 
-                              {/* ================================================= */}
-                              {/* AUDIO */}
-                              {/* ================================================= */}
+                                {messageType ===
+                                  "image" &&
+                                  message.mediaUrl && (
+                                    <a
+                                      href={
+                                        message.optimistic
+                                          ? undefined
+                                          : message.mediaUrl
+                                      }
+                                      target={
+                                        message.optimistic
+                                          ? undefined
+                                          : "_blank"
+                                      }
+                                      rel="noreferrer"
+                                      onClick={(
+                                        event
+                                      ) => {
+                                        if (
+                                          message.optimistic
+                                        ) {
+                                          event.preventDefault();
+                                        }
+                                      }}
+                                      className="relative block overflow-hidden rounded-xl"
+                                    >
+                                      <img
+                                        src={
+                                          message.mediaUrl
+                                        }
+                                        alt="Shared image"
+                                        loading="lazy"
+                                        className="max-h-[360px] w-auto max-w-full rounded-xl object-contain transition duration-200 hover:opacity-95"
+                                      />
 
-                              {messageType ===
-                                "audio" &&
-                                message.mediaUrl && (
-                                  <div
-                                    className={`flex min-w-[230px] max-w-[290px] items-center gap-3 rounded-xl px-2 py-1 ${
-                                      isMine
-                                        ? "bg-blue-500"
-                                        : "bg-slate-50"
-                                    }`}
-                                  >
-                                    <div
-                                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                                      {message.optimistic && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/25 backdrop-blur-[1px]">
+                                          <div className="flex items-center gap-2 rounded-full bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg">
+                                            <Loader2
+                                              size={
+                                                14
+                                              }
+                                              className="animate-spin text-blue-600"
+                                            />
+
+                                            Sending...
+                                          </div>
+                                        </div>
+                                      )}
+                                    </a>
+                                  )}
+
+                                {messageType ===
+                                  "image" &&
+                                  message.text && (
+                                    <p
+                                      className={`px-1.5 pt-2 text-[14px] leading-5 ${
                                         isMine
-                                          ? "bg-white/15 text-white"
-                                          : "bg-blue-100 text-blue-600"
+                                          ? "text-white"
+                                          : "text-slate-700"
                                       }`}
                                     >
-                                      <Mic
-                                        size={
-                                          17
-                                        }
-                                      />
-                                    </div>
-
-                                    <audio
-                                      controls
-                                      preload="metadata"
-                                      src={
-                                        message.mediaUrl
+                                      {
+                                        message.text
                                       }
-                                      className="h-9 min-w-0 flex-1"
-                                    />
+                                    </p>
+                                  )}
 
-                                    {message.duration !==
-                                      undefined && (
-                                      <span
-                                        className={`shrink-0 text-[10px] font-semibold ${
+                                {messageType ===
+                                  "audio" &&
+                                  message.mediaUrl && (
+                                    <div
+                                      className={`flex min-w-[230px] max-w-[290px] items-center gap-3 rounded-xl px-2 py-1 ${
+                                        isMine
+                                          ? "bg-blue-500"
+                                          : "bg-slate-50"
+                                      }`}
+                                    >
+                                      <div
+                                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                                           isMine
-                                            ? "text-blue-100"
-                                            : "text-slate-400"
+                                            ? "bg-white/15 text-white"
+                                            : "bg-blue-100 text-blue-600"
                                         }`}
                                       >
-                                        {formatDuration(
-                                          message.duration
-                                        )}
-                                      </span>
-                                    )}
+                                        <Mic
+                                          size={
+                                            17
+                                          }
+                                        />
+                                      </div>
 
-                                    {message.optimistic && (
-                                      <Loader2
-                                        size={
-                                          13
+                                      <audio
+                                        controls
+                                        preload="metadata"
+                                        src={
+                                          message.mediaUrl
                                         }
-                                        className="shrink-0 animate-spin text-white/80"
+                                        className="h-9 min-w-0 flex-1"
                                       />
-                                    )}
-                                  </div>
-                                )}
 
-                              {/* ================================================= */}
-                              {/* FOOTER */}
-                              {/* ================================================= */}
+                                      {message.duration !==
+                                        undefined && (
+                                        <span
+                                          className={`shrink-0 text-[10px] font-semibold ${
+                                            isMine
+                                              ? "text-blue-100"
+                                              : "text-slate-400"
+                                          }`}
+                                        >
+                                          {formatDuration(
+                                            message.duration
+                                          )}
+                                        </span>
+                                      )}
 
-                              <div
-                                className={`mt-1 flex items-center justify-end gap-1.5 text-[10px] ${
-                                  isMine
-                                    ? "text-blue-100"
-                                    : "text-slate-400"
-                                } ${
-                                  messageType ===
-                                  "image"
-                                    ? "px-1.5 pb-0.5"
-                                    : ""
-                                }`}
-                              >
-                                {isMessageEdited(
-                                  message
-                                ) && (
-                                  <span className="italic opacity-80">
-                                    edited
-                                  </span>
-                                )}
-
-                                <span>
-                                  {formatMessageTime(
-                                    message.createdAt
+                                      {message.optimistic && (
+                                        <Loader2
+                                          size={
+                                            13
+                                          }
+                                          className="shrink-0 animate-spin text-white/80"
+                                        />
+                                      )}
+                                    </div>
                                   )}
-                                </span>
 
-                                {isMine && (
-                                  <>
-                                    {message.status ===
-                                    "sending" ? (
-                                      <Loader2
-                                        size={
-                                          12
-                                        }
-                                        className="animate-spin"
-                                      />
-                                    ) : message.status ===
-                                      "failed" ? (
-                                      <span className="font-semibold text-red-200">
-                                        Failed
-                                      </span>
-                                    ) : (
-                                      <CheckCheck
-                                        size={
-                                          13
-                                        }
-                                      />
+                                <div
+                                  className={`mt-1 flex items-center justify-end gap-1.5 text-[10px] ${
+                                    isMine
+                                      ? "text-blue-100"
+                                      : "text-slate-400"
+                                  } ${
+                                    messageType ===
+                                    "image"
+                                      ? "px-1.5 pb-0.5"
+                                      : ""
+                                  }`}
+                                >
+                                  {isMessageEdited(
+                                    message
+                                  ) && (
+                                    <span className="italic opacity-80">
+                                      edited
+                                    </span>
+                                  )}
+
+                                  <span>
+                                    {formatMessageTime(
+                                      message.createdAt
                                     )}
-                                  </>
-                                )}
+                                  </span>
+
+                                  {isMine && (
+                                    <>
+                                      {message.status ===
+                                      "sending" ? (
+                                        <Loader2
+                                          size={
+                                            12
+                                          }
+                                          className="animate-spin"
+                                        />
+                                      ) : message.status ===
+                                        "failed" ? (
+                                        <span className="font-semibold text-red-200">
+                                          Failed
+                                        </span>
+                                      ) : (
+                                        <CheckCheck
+                                          size={
+                                            13
+                                          }
+                                        />
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+
+                                {isMine &&
+                                  !message.optimistic && (
+                                    <div className="pointer-events-none absolute -top-6 right-0 hidden rounded-full bg-slate-800 px-2 py-1 text-[9px] font-medium text-white opacity-0 transition group-hover:opacity-100 sm:block">
+                                      Long press / right click
+                                    </div>
+                                  )}
                               </div>
-
-                              {/* ================================================= */}
-                              {/* DESKTOP HINT */}
-                              {/* ================================================= */}
-
-                              {isMine &&
-                                !message.optimistic && (
-                                  <div className="pointer-events-none absolute -top-6 right-0 hidden rounded-full bg-slate-800 px-2 py-1 text-[9px] font-medium text-white opacity-0 transition group-hover:opacity-100 sm:block">
-                                    Long press / right click
-                                  </div>
-                                )}
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-                )}
-
-              </div>
-
-              <div
-                ref={
-                  messagesEndRef
-                }
-                className="h-2"
-              />
-            </div>
-          </div>
-
-          {/* ================================================= */}
-          {/* COMPOSER */}
-          {/* ================================================= */}
-
-          <div className="shrink-0 border-t border-slate-200 bg-white p-2.5 sm:p-3 md:p-4">
-
-            <div className="mx-auto max-w-5xl">
-
-              {/* ================================================= */}
-              {/* EDITING BAR */}
-              {/* ================================================= */}
-
-              {editingMessageId && (
-                <div className="mb-2 flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2.5">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                    <Edit3
-                      size={15}
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-blue-700">
-                      Editing message
-                    </p>
-
-                    <p className="truncate text-[10px] text-blue-500">
-                      Make your changes and press Enter
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={
-                      cancelEditing
-                    }
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-blue-500 transition hover:bg-blue-100"
-                    aria-label="Cancel editing"
-                  >
-                    <X
-                      size={15}
-                    />
-                  </button>
-                </div>
-              )}
-
-              {/* ================================================= */}
-              {/* COMPOSER */}
-              {/* ================================================= */}
-
-              <div
-                className={`rounded-2xl border bg-slate-50 p-1.5 transition ${
-                  editingMessageId
-                    ? "border-blue-300 bg-white ring-4 ring-blue-50"
-                    : "border-slate-200 focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50"
-                }`}
-              >
-
-                <input
-                  ref={
-                    imageInputRef
-                  }
-                  type="file"
-                  accept="image/*"
-                  onChange={
-                    handleImageSelected
-                  }
-                  className="hidden"
-                />
-
-                {/* ================================================= */}
-                {/* IMAGE PREVIEW INSIDE WHITE COMPOSER */}
-                {/* ================================================= */}
-
-                {selectedImage &&
-                  imagePreview &&
-                  !editingMessageId && (
-                    <div className="mb-1.5 flex items-center gap-2 rounded-xl bg-white p-2 shadow-sm">
-
-                      <div className="relative shrink-0">
-                        <img
-                          src={
-                            imagePreview
-                          }
-                          alt="Selected image"
-                          className="h-16 w-16 rounded-xl object-cover"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={
-                            clearSelectedImage
-                          }
-                          disabled={
-                            uploadingMedia
-                          }
-                          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-md transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
-                          aria-label="Remove selected image"
-                        >
-                          <X
-                            size={
-                              13
-                            }
-                          />
-                        </button>
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-slate-700">
-                          {
-                            selectedImage.name
-                          }
-                        </p>
-
-                        <p className="mt-0.5 text-[10px] text-slate-400">
-                          Add a caption below or send the image
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                {/* ================================================= */}
-                {/* RECORDING */}
-                {/* ================================================= */}
-
-                {isRecording ? (
-                  <div className="flex min-h-[52px] items-center gap-3 px-2">
-
-                    <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
-                      <span className="absolute h-9 w-9 animate-ping rounded-full bg-red-200 opacity-50" />
-
-                      <Mic
-                        size={17}
-                        className="relative"
-                      />
-                    </span>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-red-600">
-                        Recording voice note
-                      </p>
-
-                      <p className="text-[10px] text-slate-500">
-                        {formatDuration(
-                          recordingSeconds
-                        )}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={
-                        stopRecording
-                      }
-                      className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-red-600 active:scale-95"
-                    >
-                      <Square
-                        size={
-                          13
-                        }
-                        fill="currentColor"
-                      />
-
-                      Stop
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-
-                    {/* IMAGE BUTTON */}
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        imageInputRef.current?.click()
-                      }
-                      disabled={
-                        uploadingMedia ||
-                        isRecording ||
-                        !!editingMessageId
-                      }
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-blue-50 hover:text-blue-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
-                      aria-label="Attach image"
-                      title="Send image"
-                    >
-                      <ImagePlus
-                        size={19}
-                      />
-                    </button>
-
-                    {/* MESSAGE INPUT */}
-
-                    <input
-                      id="chat-message-input"
-                      type="text"
-                      value={
-                        messageText
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setMessageText(
-                          event
-                            .target
-                            .value
-                        )
-                      }
-                      onKeyDown={
-                        handleInputKeyDown
-                      }
-                      placeholder={
-                        editingMessageId
-                          ? "Edit your message..."
-                          : selectedImage
-                            ? "Add a caption (optional)..."
-                            : "Write a message..."
-                      }
-                      maxLength={
-                        2000
-                      }
-                      disabled={
-                        uploadingMedia
-                      }
-                      className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-50 sm:px-3"
-                    />
-
-                    {/* VOICE BUTTON */}
-
-                    {!editingMessageId && (
-                      <button
-                        type="button"
-                        onClick={
-                          startRecording
-                        }
-                        disabled={
-                          uploadingMedia ||
-                          !!messageText.trim() ||
-                          !!selectedImage
-                        }
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-blue-50 hover:text-blue-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label="Record voice note"
-                        title="Record voice note"
-                      >
-                        <Mic
-                          size={
-                            19
-                          }
-                        />
-                      </button>
-                    )}
-
-                    {/* SEND / SAVE */}
-
-                    <button
-                      type="button"
-                      onClick={
-                        handleSendMessage
-                      }
-                      disabled={
-                        uploadingMedia ||
-                        (!messageText.trim() &&
-                          !selectedImage) ||
-                        !socket?.connected
-                      }
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
-                        editingMessageId
-                          ? "bg-emerald-600 hover:bg-emerald-700"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      }`}
-                      aria-label={
-                        editingMessageId
-                          ? "Save edited message"
-                          : "Send message"
-                      }
-                    >
-                      {uploadingMedia ? (
-                        <Loader2
-                          size={
-                            17
-                          }
-                          className="animate-spin"
-                        />
-                      ) : editingMessageId ? (
-                        <Check
-                          size={
-                            18
-                          }
-                        />
-                      ) : (
-                        <Send
-                          size={
-                            17
-                          }
-                        />
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* ================================================= */}
-              {/* COMPOSER HELP */}
-              {/* ================================================= */}
-
-              <div className="mt-1.5 hidden items-center justify-between px-2 sm:flex">
-
-                <p className="text-[10px] text-slate-400">
-                  {editingMessageId
-                    ? "Enter to save • Esc to cancel"
-                    : "Enter to send • Long press a message for actions"}
-                </p>
-
-                <p className="flex items-center gap-1 text-[10px] text-slate-400">
-                  <Paperclip
-                    size={11}
-                  />
-
-                  Images & voice notes supported
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* =================================================== */}
-        {/* MEMBERS SIDEBAR */}
-        {/* =================================================== */}
-
-        {showMembers && (
-          <>
-            <button
-              type="button"
-              aria-label="Close members"
-              onClick={() =>
-                setShowMembers(
-                  false
-                )
-              }
-              className="absolute inset-0 z-20 bg-slate-900/20 backdrop-blur-[1px] md:hidden"
-            />
-
-            <aside className="absolute right-0 top-0 z-30 flex h-full w-[min(320px,88vw)] flex-col border-l border-slate-200 bg-white shadow-2xl md:relative md:z-20 md:w-[310px] md:shadow-none">
-
-              <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-slate-200 px-4 sm:px-5">
-
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800">
-                    Group members
-                  </h2>
-
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {
-                      selectedGroup
-                        .members
-                        .length
-                    }{" "}
-                    {selectedGroup
-                      .members
-                      .length ===
-                    1
-                      ? "member"
-                      : "members"}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowMembers(
-                      false
-                    )
-                  }
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
-                  aria-label="Close members"
-                >
-                  <X
-                    size={18}
-                  />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-                <div className="space-y-1">
-
-                  {selectedGroup.members.map(
-                    (member) => {
-                      const isCurrentUser =
-                        currentUser?.id ===
-                        member._id;
-
-                      return (
-                        <div
-                          key={
-                            member._id
-                          }
-                          className="flex items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50"
-                        >
-
-                          <div className="relative">
-                            <Avatar
-                              name={
-                                member.name
-                              }
-                              photo={
-                                member.profilePhoto
-                              }
-                              size="normal"
-                            />
-
-                            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-
-                            <div className="flex items-center gap-2">
-
-                              <p className="truncate text-sm font-semibold text-slate-800">
-                                {
-                                  member.name
-                                }
-                              </p>
-
-                              {isCurrentUser && (
-                                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-600">
-                                  YOU
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="mt-0.5 truncate text-xs text-slate-500">
-                              {
-                                member.email ||
-                                "Collaborator"
-                              }
-                            </p>
                           </div>
                         </div>
                       );
                     }
                   )}
-
                 </div>
-              </div>
-            </aside>
-          </>
-        )}
 
-        {/* =================================================== */}
-        {/* DELETE CONFIRMATION */}
-        {/* =================================================== */}
-
-        {deleteTargetId && (
-          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-900/30 px-4 backdrop-blur-[2px]">
-
-            <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-                <Trash2
-                  size={22}
+                <div
+                  ref={
+                    messagesEndRef
+                  }
+                  className="h-2"
                 />
               </div>
+            </div>
 
-              <h2 className="text-center text-base font-bold text-slate-800">
-                Delete message?
-              </h2>
+            {/* ================================================= */}
+            {/* COMPOSER */}
+            {/* ================================================= */}
 
-              <p className="mt-2 text-center text-sm leading-6 text-slate-500">
-                This message will be
-                removed for everyone in
-                this collaboration chat.
-              </p>
+            <div className="shrink-0 border-t border-slate-200 bg-white p-2.5 sm:p-3 md:p-4">
+              <div className="mx-auto max-w-5xl">
+                {editingMessageId && (
+                  <div className="mb-2 flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                      <Edit3
+                        size={15}
+                      />
+                    </div>
 
-              <div className="mt-6 flex gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-blue-700">
+                        Editing message
+                      </p>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDeleteTargetId(
-                      null
-                    )
-                  }
-                  className="flex h-11 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                      <p className="truncate text-[10px] text-blue-500">
+                        Make your changes and press Enter
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={
+                        cancelEditing
+                      }
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-blue-500 transition hover:bg-blue-100"
+                      aria-label="Cancel editing"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                )}
+
+                <div
+                  className={`rounded-2xl border bg-slate-50 p-1.5 transition ${
+                    editingMessageId
+                      ? "border-blue-300 bg-white ring-4 ring-blue-50"
+                      : "border-slate-200 focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50"
+                  }`}
                 >
-                  Cancel
-                </button>
+                  <input
+                    ref={
+                      imageInputRef
+                    }
+                    type="file"
+                    accept="image/*"
+                    onChange={
+                      handleImageSelected
+                    }
+                    className="hidden"
+                  />
 
-                <button
-                  type="button"
-                  onClick={
-                    handleConfirmDelete
-                  }
-                  className="flex h-11 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600 active:scale-[0.98]"
-                >
-                  Delete
-                </button>
+                  {selectedImage &&
+                    imagePreview &&
+                    !editingMessageId && (
+                      <div className="mb-1.5 flex items-center gap-2 rounded-xl bg-white p-2 shadow-sm">
+                        <div className="relative shrink-0">
+                          <img
+                            src={
+                              imagePreview
+                            }
+                            alt="Selected image"
+                            className="h-16 w-16 rounded-xl object-cover"
+                          />
 
+                          <button
+                            type="button"
+                            onClick={
+                              clearSelectedImage
+                            }
+                            disabled={
+                              uploadingMedia
+                            }
+                            className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-md transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                            aria-label="Remove selected image"
+                          >
+                            <X
+                              size={
+                                13
+                              }
+                            />
+                          </button>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-slate-700">
+                            {
+                              selectedImage.name
+                            }
+                          </p>
+
+                          <p className="mt-0.5 text-[10px] text-slate-400">
+                            Add a caption below or send the image
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                  {isRecording ? (
+                    <div className="flex min-h-[52px] items-center gap-3 px-2">
+                      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                        <span className="absolute h-9 w-9 animate-ping rounded-full bg-red-200 opacity-50" />
+
+                        <Mic
+                          size={17}
+                          className="relative"
+                        />
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-red-600">
+                          Recording voice note
+                        </p>
+
+                        <p className="text-[10px] text-slate-500">
+                          {formatDuration(
+                            recordingSeconds
+                          )}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={
+                          stopRecording
+                        }
+                        className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-red-500 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-red-600 active:scale-95"
+                      >
+                        <Square
+                          size={
+                            13
+                          }
+                          fill="currentColor"
+                        />
+
+                        Stop
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          imageInputRef.current?.click()
+                        }
+                        disabled={
+                          uploadingMedia ||
+                          isRecording ||
+                          !!editingMessageId
+                        }
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-blue-50 hover:text-blue-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Attach image"
+                        title="Send image"
+                      >
+                        <ImagePlus
+                          size={19}
+                        />
+                      </button>
+
+                      <input
+                        id="chat-message-input"
+                        type="text"
+                        value={
+                          messageText
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setMessageText(
+                            event
+                              .target
+                              .value
+                          )
+                        }
+                        onKeyDown={
+                          handleInputKeyDown
+                        }
+                        placeholder={
+                          editingMessageId
+                            ? "Edit your message..."
+                            : selectedImage
+                              ? "Add a caption (optional)..."
+                              : "Write a message..."
+                        }
+                        maxLength={
+                          2000
+                        }
+                        disabled={
+                          uploadingMedia
+                        }
+                        className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-50 sm:px-3"
+                      />
+
+                      {!editingMessageId && (
+                        <button
+                          type="button"
+                          onClick={
+                            startRecording
+                          }
+                          disabled={
+                            uploadingMedia ||
+                            !!messageText.trim() ||
+                            !!selectedImage
+                          }
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-blue-50 hover:text-blue-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                          aria-label="Record voice note"
+                          title="Record voice note"
+                        >
+                          <Mic
+                            size={19}
+                          />
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={
+                          handleSendMessage
+                        }
+                        disabled={
+                          uploadingMedia ||
+                          (!messageText.trim() &&
+                            !selectedImage) ||
+                          !socket?.connected
+                        }
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
+                          editingMessageId
+                            ? "bg-emerald-600 hover:bg-emerald-700"
+                            : "bg-blue-600 hover:bg-blue-700"
+                        }`}
+                        aria-label={
+                          editingMessageId
+                            ? "Save edited message"
+                            : "Send message"
+                        }
+                      >
+                        {uploadingMedia ? (
+                          <Loader2
+                            size={17}
+                            className="animate-spin"
+                          />
+                        ) : editingMessageId ? (
+                          <Check
+                            size={18}
+                          />
+                        ) : (
+                          <Send
+                            size={17}
+                          />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-1.5 hidden items-center justify-between px-2 sm:flex">
+                  <p className="text-[10px] text-slate-400">
+                    {editingMessageId
+                      ? "Enter to save • Esc to cancel"
+                      : "Enter to send • Long press a message for actions"}
+                  </p>
+
+                  <p className="flex items-center gap-1 text-[10px] text-slate-400">
+                    <Paperclip
+                      size={11}
+                    />
+
+                    Images & voice notes supported
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        )}
+
+          {/* =================================================== */}
+          {/* MEMBERS SIDEBAR */}
+          {/* =================================================== */}
+
+          {showMembers && (
+            <>
+              <button
+                type="button"
+                aria-label="Close members"
+                onClick={() =>
+                  setShowMembers(
+                    false
+                  )
+                }
+                className="absolute inset-0 z-20 bg-slate-900/20 backdrop-blur-[1px] md:hidden"
+              />
+
+              <aside className="absolute right-0 top-0 z-30 flex h-full w-[min(320px,88vw)] flex-col border-l border-slate-200 bg-white shadow-2xl md:relative md:z-20 md:w-[310px] md:shadow-none">
+                <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-slate-200 px-4 sm:px-5">
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-800">
+                      Group members
+                    </h2>
+
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {
+                        selectedGroup
+                          .members
+                          .length
+                      }{" "}
+                      {selectedGroup
+                        .members
+                        .length ===
+                      1
+                        ? "member"
+                        : "members"}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowMembers(
+                        false
+                      )
+                    }
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
+                    aria-label="Close members"
+                  >
+                    <X
+                      size={18}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                  <div className="space-y-1">
+                    {selectedGroup.members.map(
+                      (
+                        member
+                      ) => {
+                        const isCurrentUser =
+                          currentUser?.id ===
+                          member._id;
+
+                        const inMeeting =
+                          meetingParticipants.some(
+                            (
+                              participant
+                            ) =>
+                              participant.userId ===
+                              member._id
+                          );
+
+                        return (
+                          <div
+                            key={
+                              member._id
+                            }
+                            className="flex items-center gap-3 rounded-xl p-3 transition hover:bg-slate-50"
+                          >
+                            <div className="relative">
+                              <Avatar
+                                name={
+                                  member.name
+                                }
+                                photo={
+                                  member.profilePhoto
+                                }
+                                size="normal"
+                              />
+
+                              <span
+                                className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
+                                  inMeeting
+                                    ? "bg-emerald-500"
+                                    : "bg-slate-300"
+                                }`}
+                              />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-semibold text-slate-800">
+                                  {
+                                    member.name
+                                  }
+                                </p>
+
+                                {isCurrentUser && (
+                                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-600">
+                                    YOU
+                                  </span>
+                                )}
+
+                                {inMeeting && (
+                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-600">
+                                    LIVE
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="mt-0.5 truncate text-xs text-slate-500">
+                                {member.email ||
+                                  "Collaborator"}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
+                </div>
+              </aside>
+            </>
+          )}
+
+          {/* =================================================== */}
+          {/* DELETE CONFIRMATION */}
+          {/* =================================================== */}
+
+          {deleteTargetId && (
+            <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-900/30 px-4 backdrop-blur-[2px]">
+              <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+                  <Trash2
+                    size={22}
+                  />
+                </div>
+
+                <h2 className="text-center text-base font-bold text-slate-800">
+                  Delete message?
+                </h2>
+
+                <p className="mt-2 text-center text-sm leading-6 text-slate-500">
+                  This message will be
+                  removed for everyone in
+                  this collaboration chat.
+                </p>
+
+                <div className="mt-6 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDeleteTargetId(
+                        null
+                      )
+                    }
+                    className="flex h-11 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleConfirmDelete
+                    }
+                    className="flex h-11 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600 active:scale-[0.98]"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================== */}
+          {/* INCOMING MEETING */}
+          {/* =================================================== */}
+
+          {incomingMeeting && (
+            <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+              <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-7 text-center text-white">
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/15 ring-4 ring-white/10">
+                    {incomingMeeting.hostPhoto ? (
+                      <img
+                        src={
+                          incomingMeeting.hostPhoto
+                        }
+                        alt={
+                          incomingMeeting.hostName
+                        }
+                        className="h-20 w-20 rounded-full object-cover"
+                      />
+                    ) : (
+                      <PhoneCall
+                        size={30}
+                      />
+                    )}
+                  </div>
+
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-blue-100">
+                    Incoming meeting
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-bold">
+                    {
+                      incomingMeeting.hostName
+                    }
+                  </h2>
+
+                  <p className="mt-1 text-sm text-blue-100">
+                    wants to start a collaboration meeting
+                  </p>
+                </div>
+
+                <div className="flex gap-3 p-5">
+                  <button
+                    type="button"
+                    onClick={
+                      declineMeeting
+                    }
+                    className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    <PhoneOff
+                      size={16}
+                    />
+                    Decline
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void acceptMeeting()
+                    }
+                    className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                  >
+                    {meetingLoading ? (
+                      <Loader2
+                        size={17}
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <PhoneCall
+                        size={16}
+                      />
+                    )}
+
+                    Join
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ===================================================== */}
+      {/* MEETING */}
+      {/* ===================================================== */}
+
+      {renderMeetingOverlay()}
 
       {/* ===================================================== */}
       {/* MESSAGE ANIMATION */}
@@ -3725,7 +6155,7 @@ const MessagesPage = () => {
           }
         `}
       </style>
-    </div>
+    </>
   );
 };
 
