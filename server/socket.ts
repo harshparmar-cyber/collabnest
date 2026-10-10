@@ -2,29 +2,22 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { randomUUID } from "node:crypto";
 import { Server, Socket } from "socket.io";
-
 import Message, {
   MessageType,
 } from "./models/Message.js";
-
 import CollaborationGroup from "./models/CollaborationGroup.js";
-
 /* ============================================================
    AUTHENTICATED SOCKET
 ============================================================ */
-
 interface AuthenticatedSocket extends Socket {
   userId?: string;
 }
-
 /* ============================================================
    SOCKET PAYLOADS
 ============================================================ */
-
 interface JoinGroupPayload {
   groupId: string;
 }
-
 interface SendMessagePayload {
   groupId: string;
   type?: MessageType;
@@ -33,46 +26,42 @@ interface SendMessagePayload {
   duration?: number;
   clientMessageId?: string;
 }
-
 interface DeleteMessagePayload {
   messageId: string;
 }
-
 interface EditMessagePayload {
   messageId: string;
   text: string;
 }
-
 /* ============================================================
    MEETING PAYLOADS
 ============================================================ */
-
 type MeetingType = "meeting";
-
 interface MeetingInvitePayload {
   groupId: string;
 }
-
 interface MeetingResponsePayload {
   groupId: string;
   meetingId: string;
 }
-
 interface MeetingParticipantPayload {
   groupId: string;
   meetingId: string;
 }
-
 interface MeetingEndPayload {
   groupId: string;
   meetingId: string;
 }
-
 interface MeetingMediaStatePayload {
   groupId: string;
   meetingId: string;
   micEnabled: boolean;
   cameraEnabled: boolean;
+}
+interface ScreenShareStatePayload {
+  groupId: string;
+  meetingId: string;
+  isSharing: boolean;
 }
 
 interface WebRTCOfferPayload {
@@ -80,23 +69,19 @@ interface WebRTCOfferPayload {
   toUserId: string;
   offer: RTCSessionDescriptionInit;
 }
-
 interface WebRTCAnswerPayload {
   meetingId: string;
   toUserId: string;
   answer: RTCSessionDescriptionInit;
 }
-
 interface WebRTCIceCandidatePayload {
   meetingId: string;
   toUserId: string;
   candidate: RTCIceCandidateInit;
 }
-
 /* ============================================================
    ACTIVE MEETING
 ============================================================ */
-
 interface ActiveMeeting {
   meetingId: string;
   groupId: string;
@@ -105,88 +90,71 @@ interface ActiveMeeting {
   participants: Set<string>;
   startedAt: number;
 }
-
 /* ============================================================
    SOCKET ACKNOWLEDGEMENTS
 ============================================================ */
-
 interface SocketAck {
   success: boolean;
   message?: string;
   data?: unknown;
-
   /*
    * meetingId is included directly because the frontend
    * currently reads response.meetingId.
    */
   meetingId?: string;
 }
-
 type SocketAckCallback = (
   response: SocketAck
 ) => void;
-
 /* ============================================================
    ACTIVE MEETING STORAGE
 ============================================================ */
-
 const activeMeetings = new Map<
   string,
   ActiveMeeting
 >();
-
 const activeMeetingByGroup = new Map<
   string,
   string
 >();
-
 /* ============================================================
    ROOM HELPERS
 ============================================================ */
-
 const getUserRoom = (
   userId: string
 ): string => {
   return `user:${userId}`;
 };
-
 const getMeetingRoom = (
   meetingId: string
 ): string => {
   return `meeting:${meetingId}`;
 };
-
 /* ============================================================
    COOKIE TOKEN HELPER
 ============================================================ */
-
 const getTokenFromCookie = (
   cookieHeader?: string
 ): string | null => {
   if (!cookieHeader) {
     return null;
   }
-
   const tokenCookie = cookieHeader
     .split(";")
     .map((cookie) => cookie.trim())
     .find((cookie) =>
       cookie.startsWith("token=")
     );
-
   if (!tokenCookie) {
     return null;
   }
-
   return tokenCookie.substring(
     "token=".length
   );
 };
-
 /* ============================================================
    SOCKET ERROR HELPER
 ============================================================ */
-
 const emitSocketError = (
   socket: AuthenticatedSocket,
   message: string,
@@ -196,19 +164,15 @@ const emitSocketError = (
     success: false,
     message,
   };
-
   socket.emit(
     "socket_error",
     response
   );
-
   ack?.(response);
 };
-
 /* ============================================================
    GROUP MEMBER NOTIFICATION
 ============================================================ */
-
 const notifyGroupMembers = (
   io: Server,
   memberIds: mongoose.Types.ObjectId[],
@@ -219,71 +183,58 @@ const notifyGroupMembers = (
   for (const memberId of memberIds) {
     const memberUserId =
       memberId.toString();
-
     if (
       excludeUserId &&
       memberUserId === excludeUserId
     ) {
       continue;
     }
-
     io.to(
       getUserRoom(memberUserId)
     ).emit(event, data);
   }
 };
-
 /* ============================================================
    REMOVE ACTIVE MEETING
 ============================================================ */
-
 const removeActiveMeeting = (
   meeting: ActiveMeeting
 ) => {
   activeMeetings.delete(
     meeting.meetingId
   );
-
   activeMeetingByGroup.delete(
     meeting.groupId
   );
 };
-
 /* ============================================================
    CHECK MEETING PARTICIPANT
 ============================================================ */
-
 const getActiveMeetingParticipant = (
   meetingId: string,
   userId: string
 ): ActiveMeeting | null => {
   const meeting =
     activeMeetings.get(meetingId);
-
   if (!meeting) {
     return null;
   }
-
   if (
     !meeting.participants.has(userId)
   ) {
     return null;
   }
-
   return meeting;
 };
-
 /* ============================================================
    SOCKET SETUP
 ============================================================ */
-
 const setupSocket = (
   io: Server
 ) => {
   /* ==========================================================
      SOCKET AUTHENTICATION
   ========================================================== */
-
   io.use(
     (
       socket: AuthenticatedSocket,
@@ -292,12 +243,10 @@ const setupSocket = (
       try {
         const cookieHeader =
           socket.handshake.headers.cookie;
-
         const token =
           getTokenFromCookie(
             cookieHeader
           );
-
         if (!token) {
           return next(
             new Error(
@@ -305,10 +254,8 @@ const setupSocket = (
             )
           );
         }
-
         const secret =
           process.env.JWT_SECRET;
-
         if (!secret) {
           return next(
             new Error(
@@ -316,7 +263,6 @@ const setupSocket = (
             )
           );
         }
-
         const decoded =
           jwt.verify(
             token,
@@ -324,17 +270,14 @@ const setupSocket = (
           ) as {
             userId: string;
           };
-
         socket.userId =
           decoded.userId;
-
         next();
       } catch (error) {
         console.error(
           "Socket authentication error:",
           error
         );
-
         next(
           new Error(
             "Invalid or expired session."
@@ -343,11 +286,9 @@ const setupSocket = (
       }
     }
   );
-
   /* ==========================================================
      CONNECTION
   ========================================================== */
-
   io.on(
     "connection",
     (
@@ -355,25 +296,20 @@ const setupSocket = (
     ) => {
       const userId =
         socket.userId;
-
       console.log(
         `🔌 User connected to Socket.IO: ${userId}`
       );
-
       /* ========================================================
          PERSONAL USER ROOM
       ======================================================== */
-
       if (userId) {
         socket.join(
           getUserRoom(userId)
         );
       }
-
       /* ========================================================
          JOIN COLLABORATION GROUP
       ======================================================== */
-
       socket.on(
         "join_group",
         async (
@@ -383,30 +319,24 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const groupId =
               payload?.groupId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (!groupId) {
               emitSocketError(
                 socket,
                 "Collaboration group ID is required.",
                 ack
               );
-
               return;
             }
-
             if (
               !mongoose.Types.ObjectId.isValid(
                 groupId
@@ -417,10 +347,8 @@ const setupSocket = (
                 "Invalid collaboration group ID.",
                 ack
               );
-
               return;
             }
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -428,30 +356,24 @@ const setupSocket = (
                   members: currentUserId,
                 }
               );
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             socket.join(groupId);
-
             console.log(
               `👥 User ${currentUserId} joined group ${groupId}`
             );
-
             socket.emit(
               "group_joined",
               {
                 groupId,
               }
             );
-
             ack?.({
               success: true,
               data: {
@@ -463,7 +385,6 @@ const setupSocket = (
               "Join group socket error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to join collaboration group.",
@@ -472,40 +393,32 @@ const setupSocket = (
           }
         }
       );
-
-      
       /*
        * ========================================
        * GROUP TYPING INDICATORS
        * ========================================
        */
-
       socket.on(
         "typing_start",
         async ({ groupId }: JoinGroupPayload) => {
           try {
             const userId = socket.userId;
-
             if (!userId || !groupId) {
               return;
             }
-
             // Only allow typing events in a group
             // this socket has already joined.
             if (!socket.rooms.has(groupId)) {
               return;
             }
-
             // Confirm the user is still a member.
             const group = await CollaborationGroup.findOne({
               _id: groupId,
               members: userId,
             }).select("_id");
-
             if (!group) {
               return;
             }
-
             // Notify other members, not the sender.
             socket.to(groupId).emit("user_typing", {
               groupId,
@@ -516,21 +429,17 @@ const setupSocket = (
           }
         }
       );
-
       socket.on(
         "typing_stop",
         async ({ groupId }: JoinGroupPayload) => {
           try {
             const userId = socket.userId;
-
             if (!userId || !groupId) {
               return;
             }
-
             if (!socket.rooms.has(groupId)) {
               return;
             }
-
             socket.to(groupId).emit("user_stopped_typing", {
               groupId,
               userId,
@@ -540,12 +449,9 @@ const setupSocket = (
           }
         }
       );
-
-
       /* ========================================================
          SEND MESSAGE
       ======================================================== */
-
       socket.on(
         "send_message",
         async (
@@ -555,17 +461,14 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             const {
               groupId,
               type = "text",
@@ -574,17 +477,14 @@ const setupSocket = (
               duration,
               clientMessageId,
             } = payload || {};
-
             if (!groupId) {
               emitSocketError(
                 socket,
                 "Collaboration group ID is required.",
                 ack
               );
-
               return;
             }
-
             if (
               !mongoose.Types.ObjectId.isValid(
                 groupId
@@ -595,16 +495,13 @@ const setupSocket = (
                 "Invalid collaboration group ID.",
                 ack
               );
-
               return;
             }
-
             const allowedTypes: MessageType[] = [
               "text",
               "image",
               "audio",
             ];
-
             if (
               !allowedTypes.includes(type)
             ) {
@@ -613,28 +510,22 @@ const setupSocket = (
                 "Invalid message type.",
                 ack
               );
-
               return;
             }
-
             let trimmedText:
               | string
               | undefined;
-
             if (type === "text") {
               trimmedText =
                 text?.trim();
-
               if (!trimmedText) {
                 emitSocketError(
                   socket,
                   "Message cannot be empty.",
                   ack
                 );
-
                 return;
               }
-
               if (
                 trimmedText.length > 2000
               ) {
@@ -643,11 +534,9 @@ const setupSocket = (
                   "Message cannot exceed 2000 characters.",
                   ack
                 );
-
                 return;
               }
             }
-
             if (
               type === "image" ||
               type === "audio"
@@ -658,10 +547,8 @@ const setupSocket = (
                   "Media URL is required.",
                   ack
                 );
-
                 return;
               }
-
               try {
                 new URL(mediaUrl);
               } catch {
@@ -670,11 +557,9 @@ const setupSocket = (
                   "Invalid media URL.",
                   ack
                 );
-
                 return;
               }
             }
-
             if (type === "audio") {
               if (
                 duration !==
@@ -690,11 +575,9 @@ const setupSocket = (
                   "Invalid audio duration.",
                   ack
                 );
-
                 return;
               }
             }
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -702,17 +585,14 @@ const setupSocket = (
                   members: currentUserId,
                 }
               );
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             const messageData: {
               group: string;
               sender: string;
@@ -725,12 +605,10 @@ const setupSocket = (
               sender: currentUserId,
               type,
             };
-
             if (type === "text") {
               messageData.text =
                 trimmedText;
             }
-
             if (
               type === "image" ||
               type === "audio"
@@ -738,7 +616,6 @@ const setupSocket = (
               messageData.mediaUrl =
                 mediaUrl;
             }
-
             if (
               type === "audio" &&
               duration !== undefined
@@ -746,12 +623,10 @@ const setupSocket = (
               messageData.duration =
                 duration;
             }
-
             const newMessage =
               await Message.create(
                 messageData
               );
-
             const populatedMessage =
               await Message.findById(
                 newMessage._id
@@ -759,24 +634,19 @@ const setupSocket = (
                 "sender",
                 "name email profilePhoto"
               );
-
             if (!populatedMessage) {
               const response: SocketAck = {
                 success: false,
                 message:
                   "Failed to create message.",
               };
-
               ack?.(response);
-
               return;
             }
-
             io.to(groupId).emit(
               "new_message",
               populatedMessage
             );
-
             ack?.({
               success: true,
               data: {
@@ -787,7 +657,6 @@ const setupSocket = (
                   null,
               },
             });
-
             socket.emit(
               "message_sent",
               {
@@ -803,7 +672,6 @@ const setupSocket = (
               "Send message socket error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to send message.",
@@ -812,11 +680,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          EDIT MESSAGE
       ======================================================== */
-
       socket.on(
         "edit_message",
         async (
@@ -826,33 +692,26 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             const messageId =
               payload?.messageId;
-
             const text =
               payload?.text?.trim();
-
             if (!messageId) {
               emitSocketError(
                 socket,
                 "Message ID is required.",
                 ack
               );
-
               return;
             }
-
             if (
               !mongoose.Types.ObjectId.isValid(
                 messageId
@@ -863,55 +722,44 @@ const setupSocket = (
                 "Invalid message ID.",
                 ack
               );
-
               return;
             }
-
             if (!text) {
               emitSocketError(
                 socket,
                 "Message cannot be empty.",
                 ack
               );
-
               return;
             }
-
             if (text.length > 2000) {
               emitSocketError(
                 socket,
                 "Message cannot exceed 2000 characters.",
                 ack
               );
-
               return;
             }
-
             const message =
               await Message.findById(
                 messageId
               );
-
             if (!message) {
               emitSocketError(
                 socket,
                 "Message not found.",
                 ack
               );
-
               return;
             }
-
             if (message.type !== "text") {
               emitSocketError(
                 socket,
                 "Only text messages can be edited.",
                 ack
               );
-
               return;
             }
-
             if (
               message.sender.toString() !==
               currentUserId
@@ -921,13 +769,10 @@ const setupSocket = (
                 "You can only edit your own messages.",
                 ack
               );
-
               return;
             }
-
             const groupId =
               message.group.toString();
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -935,21 +780,16 @@ const setupSocket = (
                   members: currentUserId,
                 }
               );
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             message.text = text;
-
             await message.save();
-
             const populatedMessage =
               await Message.findById(
                 message._id
@@ -957,22 +797,18 @@ const setupSocket = (
                 "sender",
                 "name email profilePhoto"
               );
-
             if (!populatedMessage) {
               ack?.({
                 success: false,
                 message:
                   "Failed to update message.",
               });
-
               return;
             }
-
             io.to(groupId).emit(
               "message_edited",
               populatedMessage
             );
-
             ack?.({
               success: true,
               data: {
@@ -985,7 +821,6 @@ const setupSocket = (
               "Edit message socket error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to edit message.",
@@ -994,11 +829,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          DELETE MESSAGE
       ======================================================== */
-
       socket.on(
         "delete_message",
         async (
@@ -1008,30 +841,24 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const messageId =
               payload?.messageId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (!messageId) {
               emitSocketError(
                 socket,
                 "Message ID is required.",
                 ack
               );
-
               return;
             }
-
             if (
               !mongoose.Types.ObjectId.isValid(
                 messageId
@@ -1042,25 +869,20 @@ const setupSocket = (
                 "Invalid message ID.",
                 ack
               );
-
               return;
             }
-
             const message =
               await Message.findById(
                 messageId
               );
-
             if (!message) {
               emitSocketError(
                 socket,
                 "Message not found.",
                 ack
               );
-
               return;
             }
-
             if (
               message.sender.toString() !==
               currentUserId
@@ -1070,13 +892,10 @@ const setupSocket = (
                 "You can only delete your own messages.",
                 ack
               );
-
               return;
             }
-
             const groupId =
               message.group.toString();
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -1084,21 +903,17 @@ const setupSocket = (
                   members: currentUserId,
                 }
               );
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             await Message.findByIdAndDelete(
               messageId
             );
-
             io.to(groupId).emit(
               "message_deleted",
               {
@@ -1106,7 +921,6 @@ const setupSocket = (
                 groupId,
               }
             );
-
             ack?.({
               success: true,
               data: {
@@ -1119,7 +933,6 @@ const setupSocket = (
               "Delete message socket error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to delete message.",
@@ -1128,11 +941,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          START MEETING
       ======================================================== */
-
       socket.on(
         "meeting_invite",
         async (
@@ -1142,30 +953,24 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const groupId =
               payload?.groupId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (!groupId) {
               emitSocketError(
                 socket,
                 "Collaboration group ID is required.",
                 ack
               );
-
               return;
             }
-
             if (
               !mongoose.Types.ObjectId.isValid(
                 groupId
@@ -1176,10 +981,8 @@ const setupSocket = (
                 "Invalid collaboration group ID.",
                 ack
               );
-
               return;
             }
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -1189,35 +992,28 @@ const setupSocket = (
               ).select(
                 "name project owner members"
               );
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             const existingMeetingId =
               activeMeetingByGroup.get(
                 groupId
               );
-
             if (existingMeetingId) {
               emitSocketError(
                 socket,
                 "A meeting is already active for this collaboration group.",
                 ack
               );
-
               return;
             }
-
             const meetingId =
               randomUUID();
-
             const meeting: ActiveMeeting =
               {
                 meetingId,
@@ -1232,23 +1028,19 @@ const setupSocket = (
                 startedAt:
                   Date.now(),
               };
-
             activeMeetings.set(
               meetingId,
               meeting
             );
-
             activeMeetingByGroup.set(
               groupId,
               meetingId
             );
-
             socket.join(
               getMeetingRoom(
                 meetingId
               )
             );
-
             notifyGroupMembers(
               io,
               group.members,
@@ -1264,7 +1056,6 @@ const setupSocket = (
               },
               currentUserId
             );
-
             socket.emit(
               "meeting_started",
               {
@@ -1275,7 +1066,6 @@ const setupSocket = (
                 type: "meeting",
               }
             );
-
             /*
              * IMPORTANT:
              * meetingId is returned directly because
@@ -1292,7 +1082,6 @@ const setupSocket = (
                 type: "meeting",
               },
             });
-
             console.log(
               `📞 Meeting started: ${meetingId} | group: ${groupId} | host: ${currentUserId}`
             );
@@ -1301,7 +1090,6 @@ const setupSocket = (
               "Meeting invite error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to start meeting.",
@@ -1310,11 +1098,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          ACCEPT / JOIN MEETING
       ======================================================== */
-
       socket.on(
         "meeting_accept",
         async (
@@ -1324,23 +1110,18 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const groupId =
               payload?.groupId;
-
             const meetingId =
               payload?.meetingId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !groupId ||
               !meetingId
@@ -1350,15 +1131,12 @@ const setupSocket = (
                 "Group ID and meeting ID are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               activeMeetings.get(
                 meetingId
               );
-
             if (
               !meeting ||
               meeting.groupId !==
@@ -1369,10 +1147,8 @@ const setupSocket = (
                 "This meeting is no longer active.",
                 ack
               );
-
               return;
             }
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -1380,17 +1156,14 @@ const setupSocket = (
                   members: currentUserId,
                 }
               ).select("members");
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             /*
              * Prevent duplicate joins.
              */
@@ -1398,17 +1171,14 @@ const setupSocket = (
               meeting.participants.has(
                 currentUserId
               );
-
             meeting.participants.add(
               currentUserId
             );
-
             socket.join(
               getMeetingRoom(
                 meetingId
               )
             );
-
             /*
              * Notify existing participants only.
              *
@@ -1436,7 +1206,6 @@ const setupSocket = (
                   }
                 );
             }
-
             /*
              * Tell the joining participant about
              * the meeting.
@@ -1456,7 +1225,6 @@ const setupSocket = (
                   ),
               }
             );
-
             ack?.({
               success: true,
               meetingId,
@@ -1473,7 +1241,6 @@ const setupSocket = (
                   ),
               },
             });
-
             console.log(
               `📞 User ${currentUserId} joined meeting ${meetingId}`
             );
@@ -1482,7 +1249,6 @@ const setupSocket = (
               "Meeting accept error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to join meeting.",
@@ -1491,11 +1257,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          DECLINE MEETING
       ======================================================== */
-
       socket.on(
         "meeting_decline",
         async (
@@ -1505,23 +1269,18 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const groupId =
               payload?.groupId;
-
             const meetingId =
               payload?.meetingId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !groupId ||
               !meetingId
@@ -1531,15 +1290,12 @@ const setupSocket = (
                 "Group ID and meeting ID are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               activeMeetings.get(
                 meetingId
               );
-
             if (
               !meeting ||
               meeting.groupId !==
@@ -1550,10 +1306,8 @@ const setupSocket = (
                 "This meeting is no longer active.",
                 ack
               );
-
               return;
             }
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -1561,17 +1315,14 @@ const setupSocket = (
                   members: currentUserId,
                 }
               ).select("members");
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             io.to(
               getUserRoom(
                 meeting.hostId
@@ -1585,7 +1336,6 @@ const setupSocket = (
                   currentUserId,
               }
             );
-
             io.to(
               getMeetingRoom(
                 meetingId
@@ -1599,7 +1349,6 @@ const setupSocket = (
                   currentUserId,
               }
             );
-
             ack?.({
               success: true,
             });
@@ -1608,7 +1357,6 @@ const setupSocket = (
               "Meeting decline error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to decline meeting.",
@@ -1617,11 +1365,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          CANCEL MEETING
       ======================================================== */
-
       socket.on(
         "meeting_cancel",
         async (
@@ -1631,23 +1377,18 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const groupId =
               payload?.groupId;
-
             const meetingId =
               payload?.meetingId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !groupId ||
               !meetingId
@@ -1657,15 +1398,12 @@ const setupSocket = (
                 "Group ID and meeting ID are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               activeMeetings.get(
                 meetingId
               );
-
             if (
               !meeting ||
               meeting.groupId !==
@@ -1676,10 +1414,8 @@ const setupSocket = (
                 "This meeting is no longer active.",
                 ack
               );
-
               return;
             }
-
             if (
               meeting.hostId !==
               currentUserId
@@ -1689,10 +1425,8 @@ const setupSocket = (
                 "Only the meeting host can cancel the meeting.",
                 ack
               );
-
               return;
             }
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -1700,17 +1434,14 @@ const setupSocket = (
                   members: currentUserId,
                 }
               ).select("members");
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             notifyGroupMembers(
               io,
               group.members,
@@ -1722,7 +1453,6 @@ const setupSocket = (
                   currentUserId,
               }
             );
-
             io.to(
               getMeetingRoom(
                 meetingId
@@ -1736,15 +1466,12 @@ const setupSocket = (
                   currentUserId,
               }
             );
-
             removeActiveMeeting(
               meeting
             );
-
             ack?.({
               success: true,
             });
-
             console.log(
               `📞 Meeting cancelled: ${meetingId}`
             );
@@ -1753,7 +1480,6 @@ const setupSocket = (
               "Meeting cancel error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to cancel meeting.",
@@ -1762,11 +1488,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          MEETING MEDIA STATE
       ======================================================== */
-
       socket.on(
         "meeting_media_state",
         async (
@@ -1776,24 +1500,20 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const {
               groupId,
               meetingId,
               micEnabled,
               cameraEnabled,
             } = payload || {};
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !groupId ||
               !meetingId
@@ -1803,10 +1523,8 @@ const setupSocket = (
                 "Group ID and meeting ID are required.",
                 ack
               );
-
               return;
             }
-
             if (
               typeof micEnabled !==
                 "boolean" ||
@@ -1818,16 +1536,13 @@ const setupSocket = (
                 "Invalid microphone or camera state.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               getActiveMeetingParticipant(
                 meetingId,
                 currentUserId
               );
-
             if (
               !meeting ||
               meeting.groupId !==
@@ -1838,10 +1553,8 @@ const setupSocket = (
                 "You are not participating in this meeting.",
                 ack
               );
-
               return;
             }
-
             /*
              * Send the state to everybody else in the meeting.
              */
@@ -1862,7 +1575,6 @@ const setupSocket = (
                   cameraEnabled,
                 }
               );
-
             ack?.({
               success: true,
             });
@@ -1871,10 +1583,75 @@ const setupSocket = (
               "Meeting media state error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to update meeting media state.",
+              ack
+            );
+          }
+        }
+      );
+      /* ========================================================
+         SCREEN SHARE STATUS RELAY
+      ======================================================== */
+      socket.on(
+        "screen_share_state",
+        (
+          payload: ScreenShareStatePayload,
+          ack?: SocketAckCallback
+        ) => {
+          try {
+            const currentUserId = socket.userId;
+            const { groupId, meetingId, isSharing } = payload || {};
+
+            if (!currentUserId) {
+              emitSocketError(socket, "Authentication required.", ack);
+              return;
+            }
+
+            if (
+              !groupId ||
+              !meetingId ||
+              typeof isSharing !== "boolean"
+            ) {
+              emitSocketError(
+                socket,
+                "Group ID, meeting ID and screen-sharing state are required.",
+                ack
+              );
+              return;
+            }
+
+            const meeting = getActiveMeetingParticipant(
+              meetingId,
+              currentUserId
+            );
+
+            if (!meeting || meeting.groupId !== groupId) {
+              emitSocketError(
+                socket,
+                "You are not participating in this meeting.",
+                ack
+              );
+              return;
+            }
+
+            socket.to(getMeetingRoom(meetingId)).emit(
+              "screen_share_state",
+              {
+                groupId,
+                meetingId,
+                userId: currentUserId,
+                isSharing,
+              }
+            );
+
+            ack?.({ success: true });
+          } catch (error) {
+            console.error("Screen share state relay error:", error);
+            emitSocketError(
+              socket,
+              "Failed to update screen-sharing state.",
               ack
             );
           }
@@ -1884,7 +1661,6 @@ const setupSocket = (
       /* ========================================================
          WEBRTC OFFER RELAY
       ======================================================== */
-
       socket.on(
         "webrtc_offer",
         async (
@@ -1894,23 +1670,19 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const {
               meetingId,
               toUserId,
               offer,
             } = payload || {};
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !meetingId ||
               !toUserId ||
@@ -1921,26 +1693,21 @@ const setupSocket = (
                 "Meeting ID, target user and offer are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               getActiveMeetingParticipant(
                 meetingId,
                 currentUserId
               );
-
             if (!meeting) {
               emitSocketError(
                 socket,
                 "You are not participating in this meeting.",
                 ack
               );
-
               return;
             }
-
             if (
               !meeting.participants.has(
                 toUserId
@@ -1951,10 +1718,8 @@ const setupSocket = (
                 "Target user is not participating in this meeting.",
                 ack
               );
-
               return;
             }
-
             /*
              * Relay the offer only to the intended user.
              */
@@ -1972,7 +1737,6 @@ const setupSocket = (
                 offer,
               }
             );
-
             ack?.({
               success: true,
             });
@@ -1981,7 +1745,6 @@ const setupSocket = (
               "WebRTC offer relay error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to send WebRTC offer.",
@@ -1990,11 +1753,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          WEBRTC ANSWER RELAY
       ======================================================== */
-
       socket.on(
         "webrtc_answer",
         async (
@@ -2004,23 +1765,19 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const {
               meetingId,
               toUserId,
               answer,
             } = payload || {};
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !meetingId ||
               !toUserId ||
@@ -2031,26 +1788,21 @@ const setupSocket = (
                 "Meeting ID, target user and answer are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               getActiveMeetingParticipant(
                 meetingId,
                 currentUserId
               );
-
             if (!meeting) {
               emitSocketError(
                 socket,
                 "You are not participating in this meeting.",
                 ack
               );
-
               return;
             }
-
             if (
               !meeting.participants.has(
                 toUserId
@@ -2061,10 +1813,8 @@ const setupSocket = (
                 "Target user is not participating in this meeting.",
                 ack
               );
-
               return;
             }
-
             io.to(
               getUserRoom(
                 toUserId
@@ -2079,7 +1829,6 @@ const setupSocket = (
                 answer,
               }
             );
-
             ack?.({
               success: true,
             });
@@ -2088,7 +1837,6 @@ const setupSocket = (
               "WebRTC answer relay error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to send WebRTC answer.",
@@ -2097,11 +1845,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          WEBRTC ICE CANDIDATE RELAY
       ======================================================== */
-
       socket.on(
         "webrtc_ice_candidate",
         async (
@@ -2111,23 +1857,19 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const {
               meetingId,
               toUserId,
               candidate,
             } = payload || {};
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !meetingId ||
               !toUserId ||
@@ -2138,26 +1880,21 @@ const setupSocket = (
                 "Meeting ID, target user and ICE candidate are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               getActiveMeetingParticipant(
                 meetingId,
                 currentUserId
               );
-
             if (!meeting) {
               emitSocketError(
                 socket,
                 "You are not participating in this meeting.",
                 ack
               );
-
               return;
             }
-
             if (
               !meeting.participants.has(
                 toUserId
@@ -2168,10 +1905,8 @@ const setupSocket = (
                 "Target user is not participating in this meeting.",
                 ack
               );
-
               return;
             }
-
             io.to(
               getUserRoom(
                 toUserId
@@ -2186,7 +1921,6 @@ const setupSocket = (
                 candidate,
               }
             );
-
             ack?.({
               success: true,
             });
@@ -2195,7 +1929,6 @@ const setupSocket = (
               "WebRTC ICE relay error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to send WebRTC ICE candidate.",
@@ -2204,11 +1937,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          LEAVE MEETING
       ======================================================== */
-
       socket.on(
         "meeting_leave",
         async (
@@ -2218,23 +1949,18 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const groupId =
               payload?.groupId;
-
             const meetingId =
               payload?.meetingId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !groupId ||
               !meetingId
@@ -2244,15 +1970,12 @@ const setupSocket = (
                 "Group ID and meeting ID are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               activeMeetings.get(
                 meetingId
               );
-
             if (
               !meeting ||
               meeting.groupId !==
@@ -2263,10 +1986,8 @@ const setupSocket = (
                 "This meeting is no longer active.",
                 ack
               );
-
               return;
             }
-
             /*
              * HOST LEAVES
              *
@@ -2283,7 +2004,6 @@ const setupSocket = (
                     members: currentUserId,
                   }
                 ).select("members");
-
               if (group) {
                 notifyGroupMembers(
                   io,
@@ -2300,7 +2020,6 @@ const setupSocket = (
                   currentUserId
                 );
               }
-
               io.to(
                 getMeetingRoom(
                   meetingId
@@ -2316,41 +2035,33 @@ const setupSocket = (
                     "host_left",
                 }
               );
-
               removeActiveMeeting(
                 meeting
               );
-
               socket.leave(
                 getMeetingRoom(
                   meetingId
                 )
               );
-
               ack?.({
                 success: true,
               });
-
               console.log(
                 `📞 Meeting ended because host left: ${meetingId}`
               );
-
               return;
             }
-
             /*
              * NORMAL PARTICIPANT LEAVES
              */
             meeting.participants.delete(
               currentUserId
             );
-
             socket.leave(
               getMeetingRoom(
                 meetingId
               )
             );
-
             socket.broadcast
               .to(
                 getMeetingRoom(
@@ -2366,7 +2077,6 @@ const setupSocket = (
                     currentUserId,
                 }
               );
-
             if (
               meeting.participants.size ===
               0
@@ -2375,11 +2085,9 @@ const setupSocket = (
                 meeting
               );
             }
-
             ack?.({
               success: true,
             });
-
             console.log(
               `📞 User ${currentUserId} left meeting ${meetingId}`
             );
@@ -2388,7 +2096,6 @@ const setupSocket = (
               "Meeting leave error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to leave meeting.",
@@ -2397,11 +2104,9 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          END MEETING FOR EVERYONE
       ======================================================== */
-
       socket.on(
         "meeting_end",
         async (
@@ -2411,23 +2116,18 @@ const setupSocket = (
           try {
             const currentUserId =
               socket.userId;
-
             const groupId =
               payload?.groupId;
-
             const meetingId =
               payload?.meetingId;
-
             if (!currentUserId) {
               emitSocketError(
                 socket,
                 "Authentication required.",
                 ack
               );
-
               return;
             }
-
             if (
               !groupId ||
               !meetingId
@@ -2437,15 +2137,12 @@ const setupSocket = (
                 "Group ID and meeting ID are required.",
                 ack
               );
-
               return;
             }
-
             const meeting =
               activeMeetings.get(
                 meetingId
               );
-
             if (
               !meeting ||
               meeting.groupId !==
@@ -2456,10 +2153,8 @@ const setupSocket = (
                 "This meeting is no longer active.",
                 ack
               );
-
               return;
             }
-
             if (
               meeting.hostId !==
               currentUserId
@@ -2469,10 +2164,8 @@ const setupSocket = (
                 "Only the meeting host can end the meeting.",
                 ack
               );
-
               return;
             }
-
             const group =
               await CollaborationGroup.findOne(
                 {
@@ -2480,17 +2173,14 @@ const setupSocket = (
                   members: currentUserId,
                 }
               ).select("members");
-
             if (!group) {
               emitSocketError(
                 socket,
                 "You are not a member of this collaboration group.",
                 ack
               );
-
               return;
             }
-
             notifyGroupMembers(
               io,
               group.members,
@@ -2505,7 +2195,6 @@ const setupSocket = (
               },
               currentUserId
             );
-
             io.to(
               getMeetingRoom(
                 meetingId
@@ -2521,15 +2210,12 @@ const setupSocket = (
                   "host_ended",
               }
             );
-
             removeActiveMeeting(
               meeting
             );
-
             ack?.({
               success: true,
             });
-
             console.log(
               `📞 Meeting ended by host: ${meetingId}`
             );
@@ -2538,7 +2224,6 @@ const setupSocket = (
               "Meeting end error:",
               error
             );
-
             emitSocketError(
               socket,
               "Failed to end the meeting.",
@@ -2547,26 +2232,21 @@ const setupSocket = (
           }
         }
       );
-
       /* ========================================================
          DISCONNECT
       ======================================================== */
-
       socket.on(
         "disconnect",
         (reason) => {
           const disconnectedUserId =
             socket.userId;
-
           console.log(
             `🔌 User disconnected: ${disconnectedUserId}`,
             reason
           );
-
           if (!disconnectedUserId) {
             return;
           }
-
           /*
            * Check all active meetings.
            */
@@ -2580,11 +2260,9 @@ const setupSocket = (
             ) {
               continue;
             }
-
             /* ==================================================
                HOST DISCONNECTED
             ================================================== */
-
             if (
               meeting.hostId ===
               disconnectedUserId
@@ -2606,26 +2284,20 @@ const setupSocket = (
                     "host_disconnected",
                 }
               );
-
               removeActiveMeeting(
                 meeting
               );
-
               console.log(
                 `📞 Meeting ended because host disconnected: ${meeting.meetingId}`
               );
-
               continue;
             }
-
             /* ==================================================
                NORMAL PARTICIPANT DISCONNECTED
             ================================================== */
-
             meeting.participants.delete(
               disconnectedUserId
             );
-
             io.to(
               getMeetingRoom(
                 meeting.meetingId
@@ -2641,7 +2313,6 @@ const setupSocket = (
                   disconnectedUserId,
               }
             );
-
             if (
               meeting.participants.size ===
               0
@@ -2656,5 +2327,4 @@ const setupSocket = (
     }
   );
 };
-
 export default setupSocket;

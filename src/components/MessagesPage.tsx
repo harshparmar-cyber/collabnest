@@ -30,6 +30,8 @@ import {
   X,
   Maximize2,
   Volume2,
+  MonitorUp,
+  History,
 } from "lucide-react";
 
 import { io, Socket } from "socket.io-client";
@@ -118,6 +120,16 @@ interface MeetingState {
   groupId: string;
   hostId: string;
   isHost: boolean;
+}
+
+interface CallHistoryEntry {
+  id: string;
+  groupId: string;
+  groupName: string;
+  startedAt: string;
+  endedAt?: string;
+  durationSeconds: number;
+  outcome: "ongoing" | "completed" | "left" | "ended";
 }
 
 interface MeetingParticipant {
@@ -443,6 +455,25 @@ const MessagesPage = () => {
   const [isMeetingFullscreen, setIsMeetingFullscreen] =
     useState(false);
 
+  const [isScreenSharing, setIsScreenSharing] =
+    useState(false);
+
+  const [screenStream, setScreenStream] =
+    useState<MediaStream | null>(null);
+
+  const [showCallHistory, setShowCallHistory] =
+    useState(false);
+
+  const [callHistory, setCallHistory] =
+    useState<CallHistoryEntry[]>(() => {
+      try {
+        const stored = localStorage.getItem("collabnest-call-history");
+        return stored ? JSON.parse(stored) as CallHistoryEntry[] : [];
+      } catch {
+        return [];
+      }
+    });
+
   /* ======================================================= */
   /* REFS */
   /* ======================================================= */
@@ -500,6 +531,12 @@ const MessagesPage = () => {
 
   const localStreamRef =
     useRef<MediaStream | null>(null);
+
+  const screenStreamRef =
+    useRef<MediaStream | null>(null);
+
+  const activeCallHistoryIdRef =
+    useRef<string | null>(null);
 
   const meetingRef =
     useRef<MeetingState | null>(null);
@@ -596,6 +633,21 @@ const MessagesPage = () => {
       }
     };
   }, [meeting?.meetingId]);
+
+  /* ======================================================= */
+  /* SAVE CALL HISTORY LOCALLY */
+  /* ======================================================= */
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "collabnest-call-history",
+        JSON.stringify(callHistory.slice(0, 100))
+      );
+    } catch (error) {
+      console.warn("Could not save call history:", error);
+    }
+  }, [callHistory]);
 
   /* ======================================================= */
   /* FETCH CURRENT USER */
@@ -962,10 +1014,15 @@ const MessagesPage = () => {
       stream
         .getTracks()
         .forEach((track) => {
-          peerConnection.addTrack(
-            track,
-            stream
-          );
+          if (track.kind === "video" && screenStreamRef.current) {
+            const activeScreenTrack = screenStreamRef.current.getVideoTracks()[0];
+            if (activeScreenTrack) {
+              peerConnection.addTrack(activeScreenTrack, screenStreamRef.current);
+              return;
+            }
+          }
+
+          peerConnection.addTrack(track, stream);
         });
     }
 
@@ -1413,10 +1470,78 @@ const MessagesPage = () => {
     };
 
   /* ======================================================= */
+  /* CALL HISTORY HELPERS */
+  /* ======================================================= */
+
+  const startCallHistoryEntry = (group: CollaborationGroup) => {
+    const id = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const entry: CallHistoryEntry = {
+      id,
+      groupId: group._id,
+      groupName: group.name || group.project?.title || "Collaboration group",
+      startedAt: new Date().toISOString(),
+      durationSeconds: 0,
+      outcome: "ongoing",
+    };
+
+    activeCallHistoryIdRef.current = id;
+    setCallHistory((previous) => [entry, ...previous].slice(0, 100));
+  };
+
+  const finishCallHistoryEntry = (outcome: "completed" | "left" | "ended" = "completed") => {
+    const id = activeCallHistoryIdRef.current;
+    if (!id) return;
+
+    const endedAt = new Date();
+    setCallHistory((previous) => previous.map((entry) => {
+      if (entry.id !== id) return entry;
+      return {
+        ...entry,
+        endedAt: endedAt.toISOString(),
+        durationSeconds: Math.max(0, Math.floor((endedAt.getTime() - new Date(entry.startedAt).getTime()) / 1000)),
+        outcome,
+      };
+    }));
+    activeCallHistoryIdRef.current = null;
+  };
+
+  /* ======================================================= */
+  /* STOP SCREEN SHARE */
+  /* ======================================================= */
+
+  const stopScreenShare = async () => {
+    const activeScreenStream = screenStreamRef.current;
+    if (!activeScreenStream) return;
+
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    setIsScreenSharing(false);
+
+    const cameraTrack = localStreamRef.current?.getVideoTracks()[0] || null;
+    for (const peer of peerConnectionsRef.current.values()) {
+      const sender = peer.getSenders().find((item) => item.track?.kind === "video");
+      if (sender) {
+        try {
+          await sender.replaceTrack(isCameraEnabled ? cameraTrack : null);
+        } catch (error) {
+          console.error("Could not restore camera after screen share:", error);
+        }
+      }
+    }
+
+    activeScreenStream.getTracks().forEach((track) => track.stop());
+  };
+
+  /* ======================================================= */
   /* CLEANUP MEETING */
   /* ======================================================= */
 
   const cleanupMeeting = () => {
+    finishCallHistoryEntry("completed");
+    void stopScreenShare();
     closeAllPeerConnections();
 
     stopLocalStream();
@@ -1629,6 +1754,8 @@ const MessagesPage = () => {
             return;
           }
 
+          startCallHistoryEntry(currentGroup);
+
           const nextMeeting: MeetingState =
             {
               meetingId,
@@ -1739,6 +1866,17 @@ const MessagesPage = () => {
             return;
           }
 
+          if (group) {
+            startCallHistoryEntry(group);
+          } else {
+            startCallHistoryEntry({
+              _id: invite.groupId,
+              name: "Collaboration group",
+              project: { _id: "", title: "Collaboration group" },
+              members: [],
+            });
+          }
+
           const nextMeeting: MeetingState =
             {
               meetingId:
@@ -1841,6 +1979,7 @@ const MessagesPage = () => {
       );
     }
 
+    finishCallHistoryEntry("left");
     cleanupMeeting();
   };
 
@@ -1871,6 +2010,7 @@ const MessagesPage = () => {
       );
     }
 
+    finishCallHistoryEntry("ended");
     cleanupMeeting();
   };
 
@@ -2035,6 +2175,58 @@ const MessagesPage = () => {
       }
 
     };
+
+  /* ======================================================= */
+  /* TOGGLE SCREEN SHARE */
+  /* ======================================================= */
+
+  const toggleScreenShare = async () => {
+    if (!meeting) return;
+
+    if (screenStreamRef.current) {
+      await stopScreenShare();
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setMeetingError("Screen sharing is not supported by this browser.");
+      return;
+    }
+
+    try {
+      const capturedStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 15, max: 30 } },
+        audio: false,
+      });
+      const screenTrack = capturedStream.getVideoTracks()[0];
+      if (!screenTrack) {
+        capturedStream.getTracks().forEach((track) => track.stop());
+        throw new Error("Could not access the screen share stream.");
+      }
+
+      screenStreamRef.current = capturedStream;
+      setScreenStream(capturedStream);
+      setIsScreenSharing(true);
+
+      for (const peer of peerConnectionsRef.current.values()) {
+        const sender = peer.getSenders().find((item) => item.track?.kind === "video");
+        if (sender) {
+          await sender.replaceTrack(screenTrack);
+        } else {
+          peer.addTrack(screenTrack, capturedStream);
+        }
+      }
+
+      screenTrack.onended = () => {
+        void stopScreenShare();
+      };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        return;
+      }
+      setMeetingError(error instanceof Error ? error.message : "Unable to share your screen.");
+    }
+  };
 
   /* ======================================================= */
   /* FORMAT MEETING TIME */
@@ -4668,12 +4860,13 @@ const MessagesPage = () => {
                   participant={{
                     ...localMeetingParticipant,
                     stream:
+                      screenStream ||
                       localStream ||
                       localMeetingParticipant.stream,
                     micEnabled:
                       isMicEnabled,
                     cameraEnabled:
-                      isCameraEnabled,
+                      isCameraEnabled || isScreenSharing,
                   }}
                   isLocal
                   onToggleFullscreen={
@@ -4758,7 +4951,9 @@ const MessagesPage = () => {
                 onClick={() =>
                   void toggleCamera()
                 }
-                className={`flex h-12 w-12 items-center justify-center rounded-full transition active:scale-95 ${
+                disabled={isScreenSharing}
+                title={isScreenSharing ? "Stop screen sharing before changing camera" : "Toggle camera"}
+                className={`flex h-12 w-12 items-center justify-center rounded-full transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
                   isCameraEnabled
                     ? "bg-white/10 text-white hover:bg-white/15"
                     : "bg-red-500 text-white hover:bg-red-600"
@@ -4776,6 +4971,20 @@ const MessagesPage = () => {
                     size={19}
                   />
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void toggleScreenShare()}
+                className={`flex h-12 w-12 items-center justify-center rounded-full transition active:scale-95 ${
+                  isScreenSharing
+                    ? "bg-blue-600 text-white hover:bg-blue-500"
+                    : "bg-white/10 text-white hover:bg-white/15"
+                }`}
+                aria-label={isScreenSharing ? "Stop screen sharing" : "Share your screen"}
+                title={isScreenSharing ? "Stop sharing" : "Share screen"}
+              >
+                <MonitorUp size={19} />
               </button>
 
               <div className="mx-1 h-8 w-px bg-white/10" />
@@ -4842,6 +5051,9 @@ const MessagesPage = () => {
       clearLongPress();
 
       stopRecordingTimer();
+
+      screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
 
       if (
         imagePreview
@@ -5263,6 +5475,16 @@ const MessagesPage = () => {
                 <span className="hidden text-xs font-bold sm:inline">
                   Meeting
                 </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCallHistory(true)}
+                className="mr-1 flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-blue-600 active:scale-95"
+                aria-label="View call history"
+                title="Call history"
+              >
+                <History size={19} />
               </button>
 
               <button
@@ -6329,6 +6551,55 @@ const MessagesPage = () => {
           )}
         </div>
       </div>
+
+      {/* ===================================================== */}
+      {/* CALL HISTORY */}
+      {/* ===================================================== */}
+
+      {showCallHistory && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-6">
+          <section className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Call history</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Recent collaboration meetings on this browser</p>
+              </div>
+              <button type="button" onClick={() => setShowCallHistory(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100" aria-label="Close call history">
+                <X size={18} />
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+              {callHistory.length === 0 ? (
+                <div className="py-12 text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><History size={25} /></div>
+                  <h3 className="mt-4 text-sm font-bold text-slate-800">No calls yet</h3>
+                  <p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-slate-500">Your collaboration calls will appear here after you start or join a meeting.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {callHistory.map((entry) => (
+                    <div key={entry.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 p-3 sm:p-4">
+                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${entry.outcome === "ongoing" ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"}`}><PhoneCall size={18} /></div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-slate-800">{entry.groupName}</p>
+                        <p className="mt-1 text-xs text-slate-500">{new Date(entry.startedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</p>
+                        <p className="mt-1 text-xs text-slate-500">Duration: {formatDuration(entry.durationSeconds)}{entry.outcome === "ongoing" ? " · In progress" : entry.outcome === "left" ? " · You left" : entry.outcome === "ended" ? " · Meeting ended" : " · Completed"}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {callHistory.length > 0 && (
+              <footer className="flex justify-end border-t border-slate-100 px-5 py-3 sm:px-6">
+                <button type="button" onClick={() => setCallHistory([])} className="rounded-xl px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50">Clear history</button>
+              </footer>
+            )}
+          </section>
+        </div>
+      )}
 
       {/* ===================================================== */}
       {/* MEETING */}
