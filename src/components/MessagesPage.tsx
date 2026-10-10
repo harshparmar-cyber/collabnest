@@ -18,7 +18,6 @@ import {
   MicOff,
   MoreVertical,
   Paperclip,
-  Phone,
   PhoneCall,
   PhoneOff,
   Send,
