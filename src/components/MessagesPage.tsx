@@ -18,6 +18,7 @@ import {
   MicOff,
   MoreVertical,
   Paperclip,
+  Phone,
   PhoneCall,
   PhoneOff,
   Send,
@@ -392,6 +393,23 @@ const MessagesPage = () => {
     useState(0);
 
   /* ======================================================= */
+  /* GROUP TYPING INDICATOR */
+  /* ======================================================= */
+
+  const [typingUsers, setTypingUsers] =
+    useState<string[]>([]);
+
+  const typingStopTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const typingTimeoutsRef =
+    useRef<Map<string, ReturnType<typeof setTimeout>>>(
+      new Map()
+    );
+
+  const isTypingRef = useRef(false);
+
+  /* ======================================================= */
   /* MEETING STATE */
   /* ======================================================= */
 
@@ -689,6 +707,67 @@ const MessagesPage = () => {
       (member) =>
         member._id === userId
     );
+  };
+
+  /* ======================================================= */
+  /* GROUP TYPING HANDLERS */
+  /* ======================================================= */
+
+  const stopTyping = () => {
+    if (typingStopTimerRef.current) {
+      clearTimeout(typingStopTimerRef.current);
+      typingStopTimerRef.current = null;
+    }
+
+    const groupId = selectedGroupRef.current?._id;
+    const currentSocket = socketRef.current;
+
+    if (
+      isTypingRef.current &&
+      groupId &&
+      currentSocket?.connected
+    ) {
+      currentSocket.emit("typing_stop", { groupId });
+    }
+
+    isTypingRef.current = false;
+  };
+
+  const handleTypingInput = (value: string) => {
+    const groupId = selectedGroupRef.current?._id;
+    const currentSocket = socketRef.current;
+
+    if (
+      !value.trim() ||
+      editingMessageId ||
+      selectedImage ||
+      !groupId
+    ) {
+      stopTyping();
+      return;
+    }
+
+    if (!isTypingRef.current && currentSocket?.connected) {
+      currentSocket.emit("typing_start", { groupId });
+      isTypingRef.current = true;
+    }
+
+    if (typingStopTimerRef.current) {
+      clearTimeout(typingStopTimerRef.current);
+    }
+
+    typingStopTimerRef.current = setTimeout(() => {
+      stopTyping();
+    }, 1300);
+  };
+
+  const clearTypingUsers = () => {
+    typingTimeoutsRef.current.forEach((timer) => {
+      clearTimeout(timer);
+    });
+
+    typingTimeoutsRef.current.clear();
+    setTypingUsers([]);
   };
 
   /* ======================================================= */
@@ -2060,6 +2139,83 @@ const MessagesPage = () => {
     );
 
     /* ===================================================== */
+    /* GROUP TYPING EVENTS */
+    /* ===================================================== */
+
+    newSocket.on(
+      "user_typing",
+      ({
+        groupId,
+        userId,
+      }: {
+        groupId: string;
+        userId: string;
+      }) => {
+        if (
+          groupId !== selectedGroupRef.current?._id ||
+          userId === currentUser?.id
+        ) {
+          return;
+        }
+
+        if (!findGroupMember(userId)) {
+          return;
+        }
+
+        setTypingUsers((previous) =>
+          previous.includes(userId)
+            ? previous
+            : [...previous, userId]
+        );
+
+        const existingTimer =
+          typingTimeoutsRef.current.get(userId);
+
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+        }
+
+        const timer = setTimeout(() => {
+          setTypingUsers((previous) =>
+            previous.filter((id) => id !== userId)
+          );
+
+          typingTimeoutsRef.current.delete(userId);
+        }, 3000);
+
+        typingTimeoutsRef.current.set(userId, timer);
+      }
+    );
+
+    newSocket.on(
+      "user_stopped_typing",
+      ({
+        groupId,
+        userId,
+      }: {
+        groupId: string;
+        userId: string;
+      }) => {
+        if (groupId !== selectedGroupRef.current?._id) {
+          return;
+        }
+
+        const timer =
+          typingTimeoutsRef.current.get(userId);
+
+        if (timer) {
+          clearTimeout(timer);
+        }
+
+        typingTimeoutsRef.current.delete(userId);
+
+        setTypingUsers((previous) =>
+          previous.filter((id) => id !== userId)
+        );
+      }
+    );
+
+    /* ===================================================== */
     /* SOCKET ERROR */
     /* ===================================================== */
 
@@ -2781,6 +2937,9 @@ const MessagesPage = () => {
     /* ===================================================== */
 
     return () => {
+      stopTyping();
+      clearTypingUsers();
+
       socketRef.current =
         null;
 
@@ -2945,6 +3104,9 @@ const MessagesPage = () => {
     async (
       group: CollaborationGroup
     ) => {
+      stopTyping();
+      clearTypingUsers();
+
       setSelectedGroup(
         group
       );
@@ -3006,6 +3168,9 @@ const MessagesPage = () => {
     if (meeting) {
       leaveMeeting();
     }
+
+    stopTyping();
+    clearTypingUsers();
 
     selectedGroupRef.current =
       null;
@@ -3123,6 +3288,8 @@ const MessagesPage = () => {
       ) {
         return;
       }
+
+      stopTyping();
 
       if (selectedImage) {
         const file =
@@ -5008,6 +5175,42 @@ const MessagesPage = () => {
                 </button>
               </div>
 
+              {typingUsers.length > 0 && (
+                <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-blue-600">
+                  <span className="flex shrink-0 items-center gap-0.5">
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.3s]" />
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.15s]" />
+                    <span className="h-1 w-1 animate-bounce rounded-full bg-blue-500" />
+                  </span>
+
+                  <span className="truncate">
+                    {(() => {
+                      const names = typingUsers
+                        .map((userId) =>
+                          selectedGroup.members.find(
+                            (member) => member._id === userId
+                          )?.name
+                        )
+                        .filter(Boolean) as string[];
+
+                      if (names.length === 1) {
+                        return `${names[0]} is typing...`;
+                      }
+
+                      if (names.length === 2) {
+                        return `${names[0]} and ${names[1]} are typing...`;
+                      }
+
+                      if (names.length > 2) {
+                        return `${names[0]} and ${names.length - 1} others are typing...`;
+                      }
+
+                      return "Someone is typing...";
+                    })()}
+                  </span>
+                </div>
+              )}
+
               <div
                 className={`mr-1 hidden items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold sm:flex ${
                   socket?.connected
@@ -5752,15 +5955,12 @@ const MessagesPage = () => {
                         value={
                           messageText
                         }
-                        onChange={(
-                          event
-                        ) =>
-                          setMessageText(
-                            event
-                              .target
-                              .value
-                          )
-                        }
+                        onChange={(event) => {
+                          const value = event.target.value;
+
+                          setMessageText(value);
+                          handleTypingInput(value);
+                        }}
                         onKeyDown={
                           handleInputKeyDown
                         }

@@ -473,6 +473,75 @@ const setupSocket = (
         }
       );
 
+      
+      /*
+       * ========================================
+       * GROUP TYPING INDICATORS
+       * ========================================
+       */
+
+      socket.on(
+        "typing_start",
+        async ({ groupId }: JoinGroupPayload) => {
+          try {
+            const userId = socket.userId;
+
+            if (!userId || !groupId) {
+              return;
+            }
+
+            // Only allow typing events in a group
+            // this socket has already joined.
+            if (!socket.rooms.has(groupId)) {
+              return;
+            }
+
+            // Confirm the user is still a member.
+            const group = await CollaborationGroup.findOne({
+              _id: groupId,
+              members: userId,
+            }).select("_id");
+
+            if (!group) {
+              return;
+            }
+
+            // Notify other members, not the sender.
+            socket.to(groupId).emit("user_typing", {
+              groupId,
+              userId,
+            });
+          } catch (error) {
+            console.error("Typing start error:", error);
+          }
+        }
+      );
+
+      socket.on(
+        "typing_stop",
+        async ({ groupId }: JoinGroupPayload) => {
+          try {
+            const userId = socket.userId;
+
+            if (!userId || !groupId) {
+              return;
+            }
+
+            if (!socket.rooms.has(groupId)) {
+              return;
+            }
+
+            socket.to(groupId).emit("user_stopped_typing", {
+              groupId,
+              userId,
+            });
+          } catch (error) {
+            console.error("Typing stop error:", error);
+          }
+        }
+      );
+
+
       /* ========================================================
          SEND MESSAGE
       ======================================================== */
