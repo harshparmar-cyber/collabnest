@@ -1,0 +1,10 @@
+import { Router } from "express";
+import authMiddleware from "../middleware/authMiddleware.js";
+import { startInterview, submitAnswer, finishInterview, getInterview } from "../controllers/interviewController.js";
+const router = Router();
+router.use(authMiddleware);
+router.post("/start", startInterview);
+router.post("/:sessionId/answer", submitAnswer);
+router.post("/:sessionId/finish", finishInterview);
+router.get("/:sessionId", getInterview);
+export default router;

@@ -11,6 +11,7 @@ import projectRoutes from "./routes/projectRoutes.js";
 import collaborationRoutes from "./routes/collaborationRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import setupSocket from "./socket.js";
+import interviewRoutes from "./routes/interviewRoutes.js";
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ app.use(
 );
 
 app.use("/api/messages", messageRoutes);
+app.use("/api/interviews", interviewRoutes);
 
 /*
  * ==============================
