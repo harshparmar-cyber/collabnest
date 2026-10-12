@@ -274,6 +274,26 @@ const DashboardPage = () => {
   const API_URL = import.meta.env.VITE_API_URL;
 
   // =====================================================
+  // SIDEBAR NAVIGATION + LOGOUT
+  // =====================================================
+
+  const handleLogout = async () => {
+    try {
+      if (API_URL) {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: "POST",
+          credentials: "include",
+        });
+      }
+    } catch (error) {
+      // Still send the user to the landing page if the API is unavailable.
+      console.error("Logout request failed:", error);
+    } finally {
+      navigate("/");
+    }
+  };
+
+  // =====================================================
   // FETCH CURRENT USER
   // =====================================================
 
@@ -622,6 +642,7 @@ const DashboardPage = () => {
           <SidebarItem
             icon={<Users size={20} />}
             label="My Collaborations"
+            onClick={() => navigate("/collaboration-requests")}
           />
 
           <SidebarItem
@@ -630,21 +651,27 @@ const DashboardPage = () => {
             }
             label="Messages"
             badge="2"
+            onClick={() => navigate("/messages")}
           />
 
           <SidebarItem
             icon={<Phone size={20} />}
             label="Calls"
+            // Calls and call history are part of the Messages page.
+            onClick={() => navigate("/messages")}
           />
 
           <SidebarItem
             icon={<Mic size={20} />}
             label="Interview"
+            onClick={() => navigate("/interview")}
           />
 
           <SidebarItem
             icon={<Settings size={20} />}
             label="Settings"
+            // Profile editing is currently handled on the Profile page.
+            onClick={() => navigate("/profile")}
           />
 
           {/* Logout */}
@@ -652,6 +679,7 @@ const DashboardPage = () => {
           <SidebarItem
             icon={<LogOut size={20} />}
             label="Logout"
+            onClick={() => void handleLogout()}
           />
 
         </nav>
