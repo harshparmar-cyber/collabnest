@@ -5,7 +5,6 @@ import {
   FilePlus2,
   Home,
   LogOut,
-  Menu,
   MessageCircle,
   Mic,
   Phone,
@@ -14,9 +13,9 @@ import {
   Trash2,
   Search,
   Settings,
-  Star,
   Users,
   Zap,
+  Star,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -147,9 +146,6 @@ type ProjectCardProps = {
   onDelete?: () => void;
   onView?: () => void;
   isDeleting?: boolean;
-  ownerName?: string;
-  ownerPhoto?: string;
-  onOwnerClick?: () => void;
 };
 
 type Project = {
@@ -163,7 +159,6 @@ type Project = {
     _id: string;
     name: string;
     email: string;
-    profilePhoto?: string;
   };
   createdAt: string;
   updatedAt: string;
@@ -180,12 +175,9 @@ const ProjectCard = ({
   onDelete,
   onView,
   isDeleting = false,
-  ownerName,
-  ownerPhoto,
-  onOwnerClick,
 }: ProjectCardProps) => {
   return (
-    <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md sm:p-5">
+    <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md">
       <div className="flex gap-4">
         <div
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconClass}`}
@@ -216,31 +208,9 @@ const ProjectCard = ({
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-        <div className="min-w-0 flex items-center gap-2">
-          {ownerName && (
-            <button
-              type="button"
-              onClick={onOwnerClick}
-              className="flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 transition hover:bg-blue-50"
-            >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-[9px] font-bold text-[#1684ff]">
-                {ownerPhoto ? (
-                  <img
-                    src={ownerPhoto}
-                    alt={ownerName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  ownerName.charAt(0).toUpperCase()
-                )}
-              </span>
-
-              <span className="max-w-[110px] truncate text-[9px] font-semibold text-[#477083]">
-                {ownerName}
-              </span>
-            </button>
-          )}
-        </div>
+        <span className="text-[9px] text-gray-400">
+          Posted recently
+        </span>
 
         {isOwner ? (
           <div className="flex items-center gap-2">
@@ -279,78 +249,29 @@ const ProjectCard = ({
 };
 
 type Collaborator = {
-  initials: string;
+  id: string;
   name: string;
-  role: string;
+  bio?: string;
   skills: string[];
+  profilePhoto?: string;
 };
-
-const collaborators: Collaborator[] = [
-  {
-    initials: "SP",
-    name: "Sneha Patel",
-    role: "Frontend Developer",
-    skills: ["React", "UI/UX"],
-  },
-  {
-    initials: "AS",
-    name: "Aditya Singh",
-    role: "Backend Developer",
-    skills: ["Node.js", "MongoDB"],
-  },
-  {
-    initials: "NG",
-    name: "Neha Gupta",
-    role: "UI/UX Designer",
-    skills: ["Figma", "Design"],
-  },
-  {
-    initials: "RV",
-    name: "Rajat Verma",
-    role: "Full Stack Developer",
-    skills: ["React", "Node.js"],
-  },
-];
 
 const DashboardPage = () => {
   const navigate = useNavigate();
 
   const [userName, setUserName] = useState("User");
   const [currentUserId, setCurrentUserId] = useState("");
-  const [profilePhoto, setProfilePhoto] = useState("");
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [isLoadingCollaborators, setIsLoadingCollaborators] = useState(true);
+  const [collaboratorsError, setCollaboratorsError] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(
     null
   );
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedProject, setSelectedProject] =
     useState<Project | null>(null);
 
   const API_URL = import.meta.env.VITE_API_URL;
-
-  const navigateFromMenu = (path: string) => {
-    setIsMobileMenuOpen(false);
-    navigate(path);
-  };
-
-  const handleLogout = async () => {
-  try {
-    await fetch(
-      `${API_URL}/api/auth/logout`,
-      {
-        method: "POST",
-        credentials: "include",
-      }
-    );
-  } catch (error) {
-    console.error("Logout error:", error);
-  } finally {
-    navigate("/login", {
-      replace: true,
-    });
-  }
-};
 
   // =====================================================
   // FETCH CURRENT USER
@@ -375,7 +296,6 @@ const DashboardPage = () => {
 
         setUserName(data.user.name);
         setCurrentUserId(data.user.id);
-        setProfilePhoto(data.user.profilePhoto || "");
       } catch (error) {
         console.error(
           "Failed to fetch current user:",
@@ -386,6 +306,61 @@ const DashboardPage = () => {
 
     fetchCurrentUser();
   }, [API_URL]);
+
+  // =====================================================
+  // FETCH REAL REGISTERED COLLABORATORS
+  // Requires GET /api/auth/users?limit=4 on the backend.
+  // =====================================================
+
+  useEffect(() => {
+    const fetchCollaborators = async () => {
+      try {
+        setIsLoadingCollaborators(true);
+        setCollaboratorsError("");
+
+        const response = await fetch(
+          `${API_URL}/api/auth/users?limit=50`,
+          { credentials: "include" }
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to load collaborators.");
+        }
+
+        const users = Array.isArray(data.users) ? data.users : [];
+        const currentId = String(currentUserId || "");
+
+        setCollaborators(
+          users
+            .map((user: any) => ({
+              id: String(user.id || user._id || ""),
+              name: String(user.name || "CollabNest member"),
+              bio: String(user.bio || "Student on CollabNest"),
+              skills: Array.isArray(user.skills) ? user.skills.filter(
+                (skill: unknown): skill is string => typeof skill === "string"
+              ).slice(0, 2) : [],
+              profilePhoto: typeof user.profilePhoto === "string" ? user.profilePhoto : "",
+            }))
+            .filter((user: Collaborator) => user.id && user.id !== currentId)
+            .slice(0, 4)
+        );
+      } catch (error) {
+        console.error("Fetch collaborators error:", error);
+        setCollaboratorsError(
+          error instanceof Error ? error.message : "Unable to load collaborators."
+        );
+      } finally {
+        setIsLoadingCollaborators(false);
+      }
+    };
+
+    if (API_URL) fetchCollaborators();
+    else {
+      setCollaboratorsError("API URL is not configured.");
+      setIsLoadingCollaborators(false);
+    }
+  }, [API_URL, currentUserId]);
 
   // =====================================================
   // FETCH ALL PROJECTS
@@ -500,69 +475,9 @@ const DashboardPage = () => {
     setSelectedProject(project);
   };
 
-  // =====================================================
-// SEND COLLABORATION REQUEST
-// =====================================================
-
-const handleConnect = async () => {
-  if (!selectedProject) return;
-
-  if (!selectedProject.createdBy?._id) {
-    alert("Project owner information is missing.");
-    return;
-  }
-
-  if (selectedProject.createdBy._id === currentUserId) {
-    alert("You cannot send a collaboration request to yourself.");
-    return;
-  }
-
-  setIsConnecting(true);
-
-  try {
-    const response = await fetch(
-      `${API_URL}/api/collaborations/projects/${selectedProject._id}/request`,
-      {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(
-        data.message ||
-          "Failed to send collaboration request."
-      );
-      return;
-    }
-
-    alert(
-      data.message ||
-        "Collaboration request sent successfully!"
-    );
-
-    setSelectedProject(null);
-  } catch (error) {
-    console.error(
-      "Collaboration request error:",
-      error
-    );
-
-    alert(
-      "Unable to connect to the server. Please try again."
-    );
-  } finally {
-    setIsConnecting(false);
-  }
-};
-
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
+
       {/* =====================================================
           TOP NAVBAR
       ===================================================== */}
@@ -570,19 +485,9 @@ const handleConnect = async () => {
       <header className="fixed left-0 right-0 top-0 z-50 h-[70px] bg-gradient-to-r from-[#073b88] to-[#0b4da5] text-white shadow-lg">
         <div className="flex h-full items-center">
 
-          {/* Mobile menu button */}
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white transition hover:bg-white/10 md:hidden"
-            aria-label="Open navigation menu"
-          >
-            <Menu size={22} />
-          </button>
-
           {/* Logo */}
 
-          <div className="flex shrink-0 items-center gap-2.5 px-2 md:w-[240px] md:gap-3 md:px-7">
+          <div className="flex w-[240px] shrink-0 items-center gap-3 px-7">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff] shadow-lg">
               <Users
                 size={23}
@@ -600,7 +505,7 @@ const handleConnect = async () => {
 
           {/* Search */}
 
-          <div className="hidden flex-1 items-center justify-center px-5 md:flex">
+          <div className="flex flex-1 items-center justify-center px-5">
             <div className="flex h-[44px] w-full max-w-[580px] items-center gap-3 rounded-full bg-white/10 px-5 backdrop-blur-md">
               <Search
                 size={19}
@@ -624,7 +529,7 @@ const handleConnect = async () => {
 
           {/* Right side */}
 
-          <div className="ml-auto flex items-center gap-1.5 px-2 md:gap-4 md:px-6">
+          <div className="flex items-center gap-4 px-6">
 
             <button
               type="button"
@@ -639,19 +544,12 @@ const handleConnect = async () => {
 
             <button
               type="button"
-              onClick={() => navigate("/profile")}
-              className="flex items-center gap-2 rounded-full px-1.5 py-1 transition hover:bg-white/10 md:gap-3 md:px-2"
+              className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
             >
-              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[12px] font-bold md:h-10 md:w-10 md:text-[13px]">
-                {profilePhoto ? (
-                  <img
-                    src={profilePhoto}
-                    alt={userName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  userName.charAt(0).toUpperCase()
-                )}
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
+                {userName
+                  .charAt(0)
+                  .toUpperCase()}
               </div>
 
               <span className="hidden text-[13px] font-semibold lg:block">
@@ -669,26 +567,24 @@ const handleConnect = async () => {
       </header>
 
       {/* =====================================================
-          DESKTOP SIDEBAR
+          SIDEBAR
       ===================================================== */}
 
       <aside
         className="
           fixed
+          bottom-0
           left-0
           top-[70px]
           z-40
           hidden
-          h-[calc(100vh-70px)]
           w-[240px]
-          shrink-0
           flex-col
           overflow-y-auto
           bg-gradient-to-b
           from-[#073b88]
           to-[#062f70]
           text-white
-          shadow-[4px_0_20px_rgba(7,59,136,0.12)]
           md:flex
         "
       >
@@ -698,220 +594,78 @@ const handleConnect = async () => {
             icon={<Home size={20} />}
             label="Dashboard"
             active
-            onClick={() => navigate("/dashboard")}
+            onClick={() =>
+              navigate("/dashboard")
+            }
           />
 
           <SidebarItem
-            icon={<BriefcaseBusiness size={20} />}
+            icon={
+              <BriefcaseBusiness
+                size={20}
+              />
+            }
             label="Find Projects"
-            onClick={() => navigate("/explore-projects")}
+            onClick={() =>
+              navigate("/explore-projects")
+            }
           />
 
           <SidebarItem
             icon={<Plus size={21} />}
             label="Post a Project"
-            onClick={() => navigate("/post-project")}
+            onClick={() =>
+              navigate("/post-project")
+            }
           />
 
           <SidebarItem
             icon={<Users size={20} />}
             label="My Collaborations"
-            onClick={() => navigate("/collaboration-requests")}
           />
 
           <SidebarItem
-            icon={<MessageCircle size={20} />}
+            icon={
+              <MessageCircle size={20} />
+            }
             label="Messages"
             badge="2"
-            onClick={() => navigate("/messages")}
           />
 
           <SidebarItem
             icon={<Phone size={20} />}
             label="Calls"
-            onClick={() => navigate("/messages")}
           />
 
           <SidebarItem
             icon={<Mic size={20} />}
             label="Interview"
-            onClick={() => navigate("/messages")}
           />
 
           <SidebarItem
             icon={<Settings size={20} />}
             label="Settings"
-            onClick={() => navigate("/profile")}
           />
 
-          <div className="my-4 h-px bg-white/10" />
+          {/* Logout */}
 
           <SidebarItem
             icon={<LogOut size={20} />}
             label="Logout"
-            onClick={handleLogout}
           />
 
         </nav>
       </aside>
 
       {/* =====================================================
-          MOBILE NAVIGATION DRAWER
-      ===================================================== */}
-
-      {isMobileMenuOpen && (
-        <>
-          <button
-            type="button"
-            aria-label="Close navigation menu"
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 top-[70px] z-[55] bg-black/40 backdrop-blur-[1px] md:hidden"
-          />
-
-          <aside
-            className="fixed bottom-0 left-0 top-[70px] z-[60] flex w-[285px] flex-col overflow-y-auto bg-gradient-to-b from-[#073b88] to-[#062f70] text-white shadow-2xl md:hidden"
-          >
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div>
-                <p className="text-[15px] font-bold">Navigation</p>
-                <p className="mt-0.5 text-[10px] text-blue-200">CollabNest workspace</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-blue-100 transition hover:bg-white/10 hover:text-white"
-                aria-label="Close navigation menu"
-              >
-                <X size={19} />
-              </button>
-            </div>
-
-            <nav className="flex-1 px-3 py-5">
-              <SidebarItem
-                icon={<Home size={20} />}
-                label="Dashboard"
-                active
-                onClick={() => navigateFromMenu("/dashboard")}
-              />
-              <SidebarItem
-                icon={<BriefcaseBusiness size={20} />}
-                label="Find Projects"
-                onClick={() => navigateFromMenu("/explore-projects")}
-              />
-              <SidebarItem
-                icon={<Plus size={21} />}
-                label="Post a Project"
-                onClick={() => navigateFromMenu("/post-project")}
-              />
-              <SidebarItem
-                icon={<Users size={20} />}
-                label="My Collaborations"
-              />
-              <SidebarItem
-                icon={<MessageCircle size={20} />}
-                label="Messages"
-                badge="2"
-                onClick={() => navigateFromMenu("/messages")}
-              />
-              <SidebarItem
-                icon={<Phone size={20} />}
-                label="Calls"
-              />
-              <SidebarItem
-                icon={<Mic size={20} />}
-                label="Interview"
-              />
-              <SidebarItem
-                icon={<Settings size={20} />}
-                label="Settings"
-              />
-
-              <div className="my-4 h-px bg-white/10" />
-
-              <SidebarItem
-                icon={<LogOut size={20} />}
-                label="Logout"
-                onClick={handleLogout}
-              />
-            </nav>
-          </aside>
-        </>
-      )}
-
-      {/* =====================================================
-          MOBILE BOTTOM NAVIGATION
-      ===================================================== */}
-
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex h-[68px] items-center justify-around border-t border-blue-100 bg-white/95 px-2 shadow-[0_-8px_25px_rgba(20,75,130,0.08)] backdrop-blur-md md:hidden">
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[#1684ff]"
-        >
-          <Home size={20} />
-          <span className="text-[9px] font-bold">Home</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate("/explore-projects")}
-          className="flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-[#1684ff]"
-        >
-          <BriefcaseBusiness size={20} />
-          <span className="text-[9px] font-semibold">Projects</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate("/post-project")}
-          className="-mt-7 flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-full border-4 border-[#f5f9ff] bg-[#1684ff] text-white shadow-lg shadow-blue-500/25"
-          aria-label="Post a project"
-        >
-          <Plus size={23} />
-          <span className="text-[8px] font-bold">Post</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate("/messages")}
-          className="relative flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-[#1684ff]"
-        >
-          <MessageCircle size={20} />
-          <span className="text-[9px] font-semibold">Messages</span>
-          <span className="absolute right-1 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#1684ff] px-1 text-[8px] font-bold text-white">
-            2
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate("/profile")}
-          className="flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-slate-500 transition hover:bg-blue-50 hover:text-[#1684ff]"
-        >
-          <div className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-[8px] font-bold text-[#1684ff]">
-            {profilePhoto ? (
-              <img
-                src={profilePhoto}
-                alt={userName}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              userName.charAt(0).toUpperCase()
-            )}
-          </div>
-          <span className="text-[9px] font-semibold">Profile</span>
-        </button>
-      </nav>
-
-      {/* =====================================================
           MAIN CONTENT
       ===================================================== */}
 
-      <main className="h-screen overflow-y-auto pb-[78px] pt-[70px] md:ml-[240px] md:pb-0">
+      <main className="h-screen overflow-y-auto pt-[70px] md:ml-[240px]">
 
-        <div className="mx-auto max-w-[1500px] p-4 sm:p-5 md:p-7">
+        <div className="mx-auto max-w-[1500px] p-5 md:p-7">
 
-          <div className="grid gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
 
             {/* =================================================
                 LEFT CONTENT
@@ -923,7 +677,7 @@ const handleConnect = async () => {
                   WELCOME BANNER
               ================================================= */}
 
-              <div className="relative min-h-[320px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-[#eaf5ff] via-[#dceeff] to-[#c9e4ff] p-5 shadow-sm sm:min-h-[300px] sm:p-6 md:min-h-[270px] md:p-7">
+              <div className="relative min-h-[270px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-[#eaf5ff] via-[#dceeff] to-[#c9e4ff] p-7 shadow-sm">
 
                 {/* Background shapes */}
 
@@ -935,13 +689,13 @@ const handleConnect = async () => {
 
                 <div className="relative z-20 max-w-[540px]">
 
-                  <h1 className="max-w-[290px] text-[27px] font-bold leading-tight tracking-[-1px] text-[#103b76] sm:text-[30px] md:max-w-none md:text-[34px]">
+                  <h1 className="text-[30px] font-bold leading-tight tracking-[-1px] text-[#103b76] md:text-[34px]">
                     Welcome back,{" "}
                     {userName.split(" ")[0]}!{" "}
                     <span>👋</span>
                   </h1>
 
-                  <p className="mt-3 max-w-[330px] text-[13px] leading-6 text-[#315f96] sm:text-[14px] md:max-w-[520px]">
+                  <p className="mt-3 max-w-[520px] text-[14px] leading-6 text-[#315f96]">
                     Great to see you again!
                     Find collaborators,
                     explore projects!
@@ -949,7 +703,7 @@ const handleConnect = async () => {
 
                   {/* Search */}
 
-                  <div className="mt-5 flex h-[48px] w-full max-w-[520px] items-center gap-2 rounded-full bg-white px-3 shadow-md sm:mt-6 sm:gap-3 sm:px-4">
+                  <div className="mt-6 flex h-[50px] w-full max-w-[520px] items-center gap-3 rounded-full bg-white px-4 shadow-md">
 
                     <Search
                       size={20}
@@ -982,11 +736,17 @@ const handleConnect = async () => {
 
                 {/* STUDENTS IMAGE */}
 
-                <div className="pointer-events-none absolute bottom-0 right-[-8px] z-10 flex h-[115px] w-[48%] items-end justify-end sm:h-[140px] sm:w-[40%] md:right-[-20px] md:h-[165px] md:w-[35%]">
+                <div className="pointer-events-none absolute bottom-0 right-[-20px] z-10 flex h-[165px] w-[35%] items-end justify-end">
                   <img
                     src={students}
                     alt="Students collaborating"
-                    className="h-full w-auto max-w-none object-contain object-right-bottom"
+                    className="
+      h-full
+      w-auto
+      max-w-none
+      object-contain
+      object-right-bottom
+    "
                   />
                 </div>
 
@@ -996,7 +756,7 @@ const handleConnect = async () => {
                   QUICK ACTIONS
               ================================================= */}
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:mt-6 md:grid-cols-3 md:gap-4">
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
 
                 {/* POST PROJECT */}
 
@@ -1030,22 +790,22 @@ const handleConnect = async () => {
                   }
                 />
 
-                {/* COLLABORATION REQUESTS */}
+                {/* START CONVERSATION */}
 
                 <QuickActionCard
-  icon={
-    <Users
-      size={23}
-    />
-  }
-  title="Collaboration Requests"
-  description="View and manage students who want to collaborate with you."
-  iconClass="bg-emerald-100 text-emerald-600"
-  arrowClass="bg-emerald-100 text-emerald-600"
-  onClick={() =>
-    navigate("/collaboration-requests")
-  }
-/>
+                  icon={
+                    <MessageCircle
+                      size={23}
+                    />
+                  }
+                  title="Collaboration Requests"
+                  description="Review students who want to join your projects."
+                  iconClass="bg-emerald-100 text-emerald-600"
+                  arrowClass="bg-emerald-100 text-emerald-600"
+                  onClick={() =>
+                    navigate("/collaboration-requests")
+                  }
+                />
 
               </div>
 
@@ -1095,7 +855,7 @@ const handleConnect = async () => {
                 ================================================= */}
 
                 {projects.length > 0 ? (
-                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 lg:grid-cols-2">
 
                     {projects
                       .slice(0, 4)
@@ -1155,21 +915,6 @@ const handleConnect = async () => {
                                   .createdBy
                                   ?._id
                               }
-                              ownerName={
-                                project.createdBy?.name
-                              }
-                              ownerPhoto={
-                                project.createdBy?.profilePhoto
-                              }
-                              onOwnerClick={() => {
-                                if (
-                                  project.createdBy?._id
-                                ) {
-                                  navigate(
-                                    `/profile/${project.createdBy._id}`
-                                  );
-                                }
-                              }}
                               onEdit={() =>
                                 handleEditProject(
                                   project
@@ -1270,7 +1015,7 @@ const handleConnect = async () => {
                   PROFILE COMPLETION
               ================================================= */}
 
-              <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
+              <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
 
                 <h2 className="text-[17px] font-bold text-[#123d78]">
                   Profile Completion
@@ -1300,7 +1045,6 @@ const handleConnect = async () => {
 
                 <button
                   type="button"
-                  onClick={() => navigate("/profile")}
                   className="mt-5 flex h-[45px] w-full items-center justify-center gap-2 rounded-xl bg-[#1684ff] text-[12px] font-bold text-white transition hover:bg-[#0874e8]"
                 >
                   Complete Profile
@@ -1315,7 +1059,7 @@ const handleConnect = async () => {
                   SUGGESTED COLLABORATORS
               ================================================= */}
 
-              <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
+              <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
 
                 <div className="flex items-center justify-between">
 
@@ -1334,134 +1078,58 @@ const handleConnect = async () => {
                 </div>
 
                 <div className="mt-5 space-y-5">
-
-                  {collaborators.map(
-                    (person) => (
-                      <div
-                        key={
-                          person.name
-                        }
-                        className="flex items-center gap-3"
-                      >
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#70b9f5] to-[#277bc9] text-[10px] font-bold text-white">
-                          {
-                            person.initials
-                          }
+                  {isLoadingCollaborators ? (
+                    <p className="py-5 text-center text-[11px] text-gray-400">
+                      Finding students...
+                    </p>
+                  ) : collaboratorsError ? (
+                    <p className="rounded-xl bg-blue-50 px-3 py-4 text-[11px] leading-5 text-blue-700">
+                      Could not load students. Check the backend users endpoint.
+                    </p>
+                  ) : collaborators.length === 0 ? (
+                    <p className="py-5 text-center text-[11px] text-gray-400">
+                      No other registered students yet.
+                    </p>
+                  ) : (
+                    collaborators.map((person) => (
+                      <div key={person.id} className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#70b9f5] to-[#277bc9] text-[10px] font-bold text-white">
+                          {person.profilePhoto ? (
+                            <img src={person.profilePhoto} alt={person.name} className="h-full w-full object-cover" />
+                          ) : (
+                            person.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()
+                          )}
                         </div>
 
                         <div className="min-w-0 flex-1">
-
                           <h3 className="truncate text-[11px] font-bold text-[#123d78]">
-                            {
-                              person.name
-                            }
+                            {person.name}
                           </h3>
-
                           <p className="mt-0.5 truncate text-[9px] text-gray-400">
-                            {
-                              person.role
-                            }
+                            {person.bio || "Student on CollabNest"}
                           </p>
-
-                          <div className="mt-1 flex gap-1">
-
-                            {person.skills.map(
-                              (skill) => (
-                                <span
-                                  key={
-                                    skill
-                                  }
-                                  className="rounded-full bg-blue-50 px-2 py-0.5 text-[7px] font-semibold text-[#4d8dca]"
-                                >
-                                  {
-                                    skill
-                                  }
-                                </span>
-                              )
-                            )}
-
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {(person.skills.length ? person.skills : ["Student"]).map((skill) => (
+                              <span key={skill} className="rounded-full bg-blue-50 px-2 py-0.5 text-[7px] font-semibold text-[#4d8dca]">
+                                {skill}
+                              </span>
+                            ))}
                           </div>
-
                         </div>
 
                         <button
                           type="button"
+                          onClick={() => navigate(`/profile/${person.id}`)}
                           className="shrink-0 rounded-lg border border-blue-200 px-3 py-1.5 text-[9px] font-semibold text-[#1684ff] transition hover:bg-blue-50"
                         >
-                          Connect
+                          View
                         </button>
-
                       </div>
-                    )
+                    ))
                   )}
-
                 </div>
-
               </div>
 
-              {/* =================================================
-                  RECENT ACTIVITY
-              ================================================= */}
-
-              <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
-
-                <div className="flex items-center justify-between">
-
-                  <div className="flex items-center gap-2">
-
-                    <Zap
-                      size={19}
-                      fill="currentColor"
-                      className="text-[#1769b9]"
-                    />
-
-                    <h2 className="text-[17px] font-bold text-[#123d78]">
-                      Recent Activity
-                    </h2>
-
-                  </div>
-
-                  <button
-                    type="button"
-                    className="text-[10px] font-semibold text-[#0878e8]"
-                  >
-                    View All →
-                  </button>
-
-                </div>
-
-                <div className="mt-5 space-y-4">
-
-                  <ActivityItem
-                    icon={
-                      <MessageCircle
-                        size={15}
-                      />
-                    }
-                    text="You received a new collaboration request."
-                    time="10 min ago"
-                  />
-
-                  <ActivityItem
-                    icon={
-                      <Users size={15} />
-                    }
-                    text="Someone viewed your project."
-                    time="1 hour ago"
-                  />
-
-                  <ActivityItem
-                    icon={
-                      <Star size={15} />
-                    }
-                    text="Your project was featured."
-                    time="3 hours ago"
-                  />
-
-                </div>
-
-              </div>
 
             </aside>
 
@@ -1477,11 +1145,31 @@ const handleConnect = async () => {
 
       {selectedProject && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-4"
+          className="
+            fixed
+            inset-0
+            z-[100]
+            flex
+            items-center
+            justify-center
+            bg-black/45
+            px-4
+            backdrop-blur-sm
+          "
           onClick={() => setSelectedProject(null)}
         >
           <div
-            className="relative max-h-[94vh] w-full max-w-[620px] overflow-hidden rounded-t-[24px] border border-blue-100 bg-white shadow-[0_25px_80px_rgba(0,0,0,0.20)] sm:max-h-[90vh] sm:rounded-[24px]"
+            className="
+              relative
+              w-full
+              max-w-[620px]
+              overflow-hidden
+              rounded-[24px]
+              border
+              border-blue-100
+              bg-white
+              shadow-[0_25px_80px_rgba(0,0,0,0.20)]
+            "
             onClick={(event) => event.stopPropagation()}
           >
             {/* Blue header */}
@@ -1493,12 +1181,9 @@ const handleConnect = async () => {
                 from-[#0b5fc7]
                 via-[#1684ff]
                 to-[#5aa9f5]
-                px-5
-                pb-6
-                pt-5
-                sm:px-6
-                sm:pb-7
-                sm:pt-6
+                px-6
+                pb-7
+                pt-6
                 text-white
               "
             >
@@ -1578,11 +1263,11 @@ const handleConnect = async () => {
                   z-10
                   max-w-[500px]
                   pr-10
-                  text-[22px]
+                  text-[24px]
                   font-bold
                   leading-tight
                   tracking-[-0.5px]
-                  sm:text-[26px] md:text-[28px]
+                  md:text-[28px]
                 "
               >
                 {selectedProject.title}
@@ -1599,54 +1284,37 @@ const handleConnect = async () => {
                   gap-3
                 "
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedProject.createdBy?._id) {
-                      setSelectedProject(null);
-                      navigate(
-                        `/profile/${selectedProject.createdBy._id}`
-                      );
-                    }
-                  }}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-[12px] font-bold uppercase transition hover:bg-white/30"
+                <div
+                  className="
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-white/20
+                    text-[12px]
+                    font-bold
+                    uppercase
+                  "
                 >
-                  {selectedProject.createdBy?.profilePhoto ? (
-                    <img
-                      src={selectedProject.createdBy.profilePhoto}
-                      alt={selectedProject.createdBy.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    selectedProject.createdBy?.name?.charAt(0) || "U"
-                  )}
-                </button>
+                  {selectedProject.createdBy?.name?.charAt(0) || "U"}
+                </div>
 
-                <div className="min-w-0">
+                <div>
                   <p className="text-[11px] text-white/70">
                     Posted by
                   </p>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedProject.createdBy?._id) {
-                        setSelectedProject(null);
-                        navigate(
-                          `/profile/${selectedProject.createdBy._id}`
-                        );
-                      }
-                    }}
-                    className="truncate text-left text-[13px] font-semibold hover:underline"
-                  >
+                  <p className="text-[13px] font-semibold">
                     {selectedProject.createdBy?.name || "Unknown user"}
-                  </button>
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Modal content */}
-            <div className="max-h-[64vh] overflow-y-auto px-5 py-5 sm:max-h-[60vh] sm:px-6 sm:py-6">
+            <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
               {/* Description */}
               <div>
                 <div className="mb-2 flex items-center gap-2">
@@ -1691,7 +1359,7 @@ const handleConnect = async () => {
               </div>
 
               {/* Project information */}
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-2 gap-3">
                 <div
                   className="
                     rounded-xl
@@ -1840,44 +1508,36 @@ const handleConnect = async () => {
                 </p>
 
                 <div className="mt-2 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedProject.createdBy?._id) {
-                        setSelectedProject(null);
-                        navigate(
-                          `/profile/${selectedProject.createdBy._id}`
-                        );
-                      }
-                    }}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#1684ff] to-[#0759bd] text-[12px] font-bold uppercase text-white"
+                  <div
+                    className="
+                      flex
+                      h-10
+                      w-10
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-gradient-to-br
+                      from-[#1684ff]
+                      to-[#0759bd]
+                      text-[12px]
+                      font-bold
+                      uppercase
+                      text-white
+                    "
                   >
-                    {selectedProject.createdBy?.profilePhoto ? (
-                      <img
-                        src={selectedProject.createdBy.profilePhoto}
-                        alt={selectedProject.createdBy.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      selectedProject.createdBy?.name?.charAt(0) || "U"
-                    )}
-                  </button>
+                    {selectedProject.createdBy?.name?.charAt(0) || "U"}
+                  </div>
 
-                  <div className="min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selectedProject.createdBy?._id) {
-                          setSelectedProject(null);
-                          navigate(
-                            `/profile/${selectedProject.createdBy._id}`
-                          );
-                        }
-                      }}
-                      className="text-left text-[12px] font-bold text-[#102a43] hover:text-[#1684ff] hover:underline"
+                  <div>
+                    <p
+                      className="
+                        text-[12px]
+                        font-bold
+                        text-[#102a43]
+                      "
                     >
                       {selectedProject.createdBy?.name || "Unknown user"}
-                    </button>
+                    </p>
 
                     <p
                       className="
@@ -1922,77 +1582,36 @@ const handleConnect = async () => {
                 </button>
 
                 <button
-  type="button"
-  onClick={handleConnect}
-  disabled={isConnecting}
-  className="
-    flex
-    h-[42px]
-    items-center
-    justify-center
-    gap-2
-    rounded-xl
-    bg-gradient-to-r
-    from-[#1684ff]
-    to-[#0759bd]
-    px-5
-    text-[11px]
-    font-semibold
-    text-white
-    shadow-lg
-    shadow-blue-500/20
-    transition
-    hover:-translate-y-[1px]
-    hover:shadow-xl
-    disabled:cursor-not-allowed
-    disabled:opacity-60
-  "
->
-  <MessageCircle size={15} />
-
-  {isConnecting
-    ? "Sending Request..."
-    : "Connect & Collaborate"}
-</button>
+                  type="button"
+                  className="
+                    flex
+                    h-[42px]
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    bg-gradient-to-r
+                    from-[#1684ff]
+                    to-[#0759bd]
+                    px-5
+                    text-[11px]
+                    font-semibold
+                    text-white
+                    shadow-lg
+                    shadow-blue-500/20
+                    transition
+                    hover:-translate-y-[1px]
+                    hover:shadow-xl
+                  "
+                >
+                  <MessageCircle size={15} />
+                  Connect / Collaborate
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
-
-    </div>
-  );
-};
-
-type ActivityItemProps = {
-  icon: React.ReactNode;
-  text: string;
-  time: string;
-};
-
-const ActivityItem = ({
-  icon,
-  text,
-  time,
-}: ActivityItemProps) => {
-  return (
-    <div className="flex gap-3">
-
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#1684ff]">
-        {icon}
-      </div>
-
-      <div>
-
-        <p className="text-[10px] leading-4 text-gray-600">
-          {text}
-        </p>
-
-        <span className="text-[8px] text-gray-400">
-          {time}
-        </span>
-
-      </div>
 
     </div>
   );
