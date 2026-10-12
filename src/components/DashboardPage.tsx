@@ -563,9 +563,11 @@ const DashboardPage = () => {
             </button>
 
             <button
-              type="button"
-              className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
-            >
+  type="button"
+  onClick={() => navigate("/profile")}
+  className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/10"
+  aria-label="Open your profile"
+>
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#7cc4ff] to-[#2378d8] text-[13px] font-bold">
                 {userName
                   .charAt(0)
@@ -1073,6 +1075,7 @@ const DashboardPage = () => {
 
                 <button
                   type="button"
+                   onClick={() => navigate("/profile")}
                   className="mt-5 flex h-[45px] w-full items-center justify-center gap-2 rounded-xl bg-[#1684ff] text-[12px] font-bold text-white transition hover:bg-[#0874e8]"
                 >
                   Complete Profile
