@@ -5,7 +5,6 @@ import {
   Code2,
   ExternalLink,
   Globe,
-  ImagePlus,
   Link2,
   Pencil,
   Plus,
@@ -59,22 +58,15 @@ type UserProfile = {
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { userId } = useParams();
-
   const API_URL = import.meta.env.VITE_API_URL;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-
-  const [postedProjects, setPostedProjects] = useState<PostedProject[]>(
-    []
-  );
-
+  const [postedProjects, setPostedProjects] = useState<PostedProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [projectsLoading, setProjectsLoading] = useState(true);
-
   const [errorMessage, setErrorMessage] = useState("");
-
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -83,7 +75,6 @@ const ProfilePage = () => {
   const [skills, setSkills] = useState<string[]>([]);
   const [profilePhoto, setProfilePhoto] = useState("");
   const [portfolio, setPortfolio] = useState<PortfolioProject[]>([]);
-
   const [skillInput, setSkillInput] = useState("");
 
   const [newProject, setNewProject] = useState<PortfolioProject>({
@@ -94,23 +85,10 @@ const ProfilePage = () => {
   });
 
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
-
-  /*
-   * ============================================================
-   * DETERMINE WHETHER THIS IS THE LOGGED-IN USER'S PROFILE
-   * ============================================================
-   */
-
   const [currentUserId, setCurrentUserId] = useState("");
 
   const isOwnProfile =
     !userId || (currentUserId !== "" && userId === currentUserId);
-
-  /*
-   * ============================================================
-   * FETCH PROFILE
-   * ============================================================
-   */
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -121,9 +99,7 @@ const ProfilePage = () => {
         let response: Response;
 
         if (userId) {
-          response = await fetch(
-            `${API_URL}/api/auth/users/${userId}`
-          );
+          response = await fetch(`${API_URL}/api/auth/users/${userId}`);
         } else {
           response = await fetch(`${API_URL}/api/auth/me`, {
             credentials: "include",
@@ -133,16 +109,13 @@ const ProfilePage = () => {
         const data = await response.json();
 
         if (!response.ok) {
-          setErrorMessage(
-            data.message || "Unable to load profile."
-          );
+          setErrorMessage(data.message || "Unable to load profile.");
           return;
         }
 
         const loadedProfile: UserProfile = data.user;
 
         setProfile(loadedProfile);
-
         setName(loadedProfile.name || "");
         setBio(loadedProfile.bio || "");
         setSkills(loadedProfile.skills || []);
@@ -154,10 +127,7 @@ const ProfilePage = () => {
         }
       } catch (error) {
         console.error("Fetch profile error:", error);
-
-        setErrorMessage(
-          "Unable to connect to the server."
-        );
+        setErrorMessage("Unable to connect to the server.");
       } finally {
         setIsLoading(false);
       }
@@ -166,29 +136,16 @@ const ProfilePage = () => {
     fetchProfile();
   }, [API_URL, userId]);
 
-  /*
-   * ============================================================
-   * GET CURRENT USER ID WHEN VIEWING A PUBLIC PROFILE
-   * ============================================================
-   */
-
   useEffect(() => {
-    if (!userId) {
-      return;
-    }
+    if (!userId) return;
 
     const fetchCurrentUser = async () => {
       try {
-        const response = await fetch(
-          `${API_URL}/api/auth/me`,
-          {
-            credentials: "include",
-          }
-        );
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          credentials: "include",
+        });
 
-        if (!response.ok) {
-          return;
-        }
+        if (!response.ok) return;
 
         const data = await response.json();
 
@@ -196,72 +153,43 @@ const ProfilePage = () => {
           setCurrentUserId(String(data.user.id));
         }
       } catch (error) {
-        console.error(
-          "Fetch current user error:",
-          error
-        );
+        console.error("Fetch current user error:", error);
       }
     };
 
     fetchCurrentUser();
   }, [API_URL, userId]);
 
-  /*
-   * ============================================================
-   * FETCH PROJECTS POSTED BY THIS USER
-   * ============================================================
-   */
-
   useEffect(() => {
-    if (!profile?.id) {
-      return;
-    }
+    if (!profile?.id) return;
 
     const fetchUserProjects = async () => {
       try {
         setProjectsLoading(true);
 
-        const response = await fetch(
-          `${API_URL}/api/projects`
-        );
-
+        const response = await fetch(`${API_URL}/api/projects`);
         const data = await response.json();
 
         if (!response.ok) {
-          console.error(
-            data.message || "Failed to load projects."
-          );
+          console.error(data.message || "Failed to load projects.");
           return;
         }
 
-        const allProjects: PostedProject[] =
-          data.projects || [];
+        const allProjects: PostedProject[] = data.projects || [];
 
-        const userProjects = allProjects.filter(
-          (project) => {
-            if (!project.createdBy) {
-              return false;
-            }
+        const userProjects = allProjects.filter((project) => {
+          if (!project.createdBy) return false;
 
-            if (typeof project.createdBy === "string") {
-              return (
-                project.createdBy === String(profile.id)
-              );
-            }
-
-            return (
-              String(project.createdBy._id) ===
-              String(profile.id)
-            );
+          if (typeof project.createdBy === "string") {
+            return project.createdBy === String(profile.id);
           }
-        );
+
+          return String(project.createdBy._id) === String(profile.id);
+        });
 
         setPostedProjects(userProjects);
       } catch (error) {
-        console.error(
-          "Fetch user projects error:",
-          error
-        );
+        console.error("Fetch user projects error:", error);
       } finally {
         setProjectsLoading(false);
       }
@@ -270,46 +198,21 @@ const ProfilePage = () => {
     fetchUserProjects();
   }, [API_URL, profile?.id]);
 
-  /*
-   * ============================================================
-   * OPEN FILE PICKER
-   * ============================================================
-   */
-
   const handleProfilePhotoClick = () => {
-    if (!isOwnProfile || !isEditing) {
-      return;
-    }
-
+    if (!isOwnProfile || !isEditing) return;
     fileInputRef.current?.click();
   };
-
-  /*
-   * ============================================================
-   * HANDLE PROFILE PHOTO
-   * ============================================================
-   */
 
   const handleProfilePhotoChange = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
+    if (!file) return;
 
-    if (!file) {
-      return;
-    }
-
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
     if (!allowedTypes.includes(file.type)) {
-      alert(
-        "Please choose a JPG, PNG, or WebP image."
-      );
-
+      alert("Please choose a JPG, PNG, or WebP image.");
       event.target.value = "";
       return;
     }
@@ -317,10 +220,7 @@ const ProfilePage = () => {
     const maxSize = 3 * 1024 * 1024;
 
     if (file.size > maxSize) {
-      alert(
-        "Profile photo must be smaller than 3 MB."
-      );
-
+      alert("Profile photo must be smaller than 3 MB.");
       event.target.value = "";
       return;
     }
@@ -329,71 +229,35 @@ const ProfilePage = () => {
 
     reader.onload = () => {
       const result = reader.result;
-
-      if (typeof result === "string") {
-        setProfilePhoto(result);
-      }
+      if (typeof result === "string") setProfilePhoto(result);
     };
 
     reader.onerror = () => {
-      alert(
-        "Unable to read the selected image."
-      );
+      alert("Unable to read the selected image.");
     };
 
     reader.readAsDataURL(file);
-
-    /*
-     * Allow selecting the same file again later.
-     */
     event.target.value = "";
   };
 
-  /*
-   * ============================================================
-   * ADD SKILL
-   * ============================================================
-   */
-
   const handleAddSkill = () => {
     const skill = skillInput.trim();
-
-    if (!skill) {
-      return;
-    }
+    if (!skill) return;
 
     if (skills.includes(skill)) {
       setSkillInput("");
       return;
     }
 
-    setSkills((currentSkills) => [
-      ...currentSkills,
-      skill,
-    ]);
-
+    setSkills((currentSkills) => [...currentSkills, skill]);
     setSkillInput("");
   };
 
-  /*
-   * ============================================================
-   * REMOVE SKILL
-   * ============================================================
-   */
-
   const handleRemoveSkill = (skillToRemove: string) => {
     setSkills((currentSkills) =>
-      currentSkills.filter(
-        (skill) => skill !== skillToRemove
-      )
+      currentSkills.filter((skill) => skill !== skillToRemove)
     );
   };
-
-  /*
-   * ============================================================
-   * ADD PORTFOLIO PROJECT
-   * ============================================================
-   */
 
   const handleAddPortfolioProject = () => {
     if (!newProject.title.trim()) {
@@ -421,28 +285,11 @@ const ProfilePage = () => {
     setShowPortfolioForm(false);
   };
 
-  /*
-   * ============================================================
-   * REMOVE PORTFOLIO PROJECT
-   * ============================================================
-   */
-
-  const handleRemovePortfolioProject = (
-    index: number
-  ) => {
+  const handleRemovePortfolioProject = (index: number) => {
     setPortfolio((currentProjects) =>
-      currentProjects.filter(
-        (_, projectIndex) =>
-          projectIndex !== index
-      )
+      currentProjects.filter((_, projectIndex) => projectIndex !== index)
     );
   };
-
-  /*
-   * ============================================================
-   * SAVE PROFILE
-   * ============================================================
-   */
 
   const handleSaveProfile = async () => {
     if (!name.trim()) {
@@ -453,80 +300,55 @@ const ProfilePage = () => {
     try {
       setIsSaving(true);
 
-      const response = await fetch(
-        `${API_URL}/api/auth/profile`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: name.trim(),
-            bio: bio.trim(),
-            skills,
-            profilePhoto,
-            portfolio,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/api/auth/profile`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          bio: bio.trim(),
+          skills,
+          profilePhoto,
+          portfolio,
+        }),
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        alert(
-          data.message ||
-            "Failed to update your profile."
-        );
+        alert(data.message || "Failed to update your profile.");
         return;
       }
 
       const updatedProfile: UserProfile = data.user;
 
       setProfile(updatedProfile);
-
       setName(updatedProfile.name || "");
       setBio(updatedProfile.bio || "");
       setSkills(updatedProfile.skills || []);
-      setProfilePhoto(
-        updatedProfile.profilePhoto || ""
-      );
+      setProfilePhoto(updatedProfile.profilePhoto || "");
       setPortfolio(updatedProfile.portfolio || []);
-
       setIsEditing(false);
 
       alert("Profile updated successfully.");
     } catch (error) {
-      console.error(
-        "Save profile error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the server. Please try again."
-      );
+      console.error("Save profile error:", error);
+      alert("Unable to connect to the server. Please try again.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  /*
-   * ============================================================
-   * CANCEL EDITING
-   * ============================================================
-   */
-
   const handleCancelEditing = () => {
-    if (!profile) {
-      return;
-    }
+    if (!profile) return;
 
     setName(profile.name || "");
     setBio(profile.bio || "");
     setSkills(profile.skills || []);
     setProfilePhoto(profile.profilePhoto || "");
     setPortfolio(profile.portfolio || []);
-
     setSkillInput("");
 
     setNewProject({
@@ -537,19 +359,10 @@ const ProfilePage = () => {
     });
 
     setShowPortfolioForm(false);
-
     setIsEditing(false);
   };
 
-  /*
-   * ============================================================
-   * EDIT PROJECT
-   * ============================================================
-   */
-
-  const handleEditPostedProject = (
-    project: PostedProject
-  ) => {
+  const handleEditPostedProject = (project: PostedProject) => {
     navigate("/post-project", {
       state: {
         editMode: true,
@@ -558,28 +371,15 @@ const ProfilePage = () => {
     });
   };
 
-  /*
-   * ============================================================
-   * BACK
-   * ============================================================
-   */
-
   const handleBack = () => {
     navigate(-1);
   };
 
-  /*
-   * ============================================================
-   * LOADING
-   * ============================================================
-   */
-
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f9ff]">
+      <div className="flex min-h-screen items-center justify-center bg-[#f4f7fc]">
         <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-[#1684ff]" />
-
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200/80 border-t-[#1684ff]" />
           <p className="mt-4 text-sm font-medium text-[#315f96]">
             Loading profile...
           </p>
@@ -588,16 +388,10 @@ const ProfilePage = () => {
     );
   }
 
-  /*
-   * ============================================================
-   * ERROR
-   * ============================================================
-   */
-
   if (errorMessage || !profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f9ff] px-5">
-        <div className="w-full max-w-md rounded-2xl border border-blue-100 bg-white p-8 text-center shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-[#f4f7fc] px-5">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-sm">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500">
             <X size={25} />
           </div>
@@ -607,8 +401,7 @@ const ProfilePage = () => {
           </h2>
 
           <p className="mt-2 text-sm text-gray-500">
-            {errorMessage ||
-              "The requested profile could not be found."}
+            {errorMessage || "The requested profile could not be found."}
           </p>
 
           <button
@@ -623,8 +416,7 @@ const ProfilePage = () => {
     );
   }
 
-  const displayName =
-    profile.name || "Student";
+  const displayName = profile.name || "Student";
 
   const initials = displayName
     .split(" ")
@@ -635,13 +427,9 @@ const ProfilePage = () => {
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
-      {/* ======================================================
-          TOP NAVBAR
-      ====================================================== */}
-
-      <header className="fixed left-0 right-0 top-0 z-50 h-[70px] bg-gradient-to-r from-[#073b88] to-[#0b4da5] text-white shadow-lg">
-        <div className="flex h-full items-center justify-between px-5 md:px-7">
+    <div className="min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-[#f7faff] via-[#f3f7fc] to-[#edf3fb] text-[#172f52]">
+      <header className="fixed left-0 right-0 top-0 z-50 h-[72px] border-b border-white/10 bg-[#092b5d]/95 text-white shadow-[0_8px_30px_-18px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        <div className="flex h-full items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -654,13 +442,9 @@ const ProfilePage = () => {
 
             <div>
               <div className="text-[20px] font-bold tracking-[-0.7px]">
-                Collab
-                <span className="text-[#74b9ff]">
-                  Nest
-                </span>
+                Collab<span className="text-[#74b9ff]">Nest</span>
               </div>
-
-              <p className="hidden text-[9px] text-blue-100/80 sm:block">
+              <p className="hidden text-xs text-blue-100/80 sm:block">
                 Student collaboration profile
               </p>
             </div>
@@ -671,7 +455,7 @@ const ProfilePage = () => {
               <button
                 type="button"
                 onClick={() => setIsEditing(true)}
-                className="flex h-10 items-center gap-2 rounded-xl bg-white/10 px-4 text-[11px] font-semibold transition hover:bg-white/20"
+                className="flex h-10 items-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold transition hover:bg-white/20"
               >
                 <Pencil size={15} />
                 Edit Profile
@@ -684,7 +468,7 @@ const ProfilePage = () => {
                   type="button"
                   onClick={handleCancelEditing}
                   disabled={isSaving}
-                  className="flex h-10 items-center gap-2 rounded-xl bg-white/10 px-4 text-[11px] font-semibold transition hover:bg-white/20 disabled:opacity-50"
+                  className="flex h-10 items-center gap-2 rounded-xl bg-white/10 px-4 text-sm font-semibold transition hover:bg-white/20 disabled:opacity-50"
                 >
                   <X size={15} />
                   Cancel
@@ -694,13 +478,10 @@ const ProfilePage = () => {
                   type="button"
                   onClick={handleSaveProfile}
                   disabled={isSaving}
-                  className="flex h-10 items-center gap-2 rounded-xl bg-[#1684ff] px-4 text-[11px] font-bold text-white shadow-lg transition hover:bg-[#0874e8] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex h-10 items-center gap-2 rounded-xl bg-[#1684ff] px-4 text-sm font-bold text-white shadow-lg transition hover:bg-[#0874e8] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Save size={15} />
-
-                  {isSaving
-                    ? "Saving..."
-                    : "Save Profile"}
+                  {isSaving ? "Saving..." : "Save Profile"}
                 </button>
               </>
             )}
@@ -708,33 +489,17 @@ const ProfilePage = () => {
         </div>
       </header>
 
-      {/* ======================================================
-          MAIN
-      ====================================================== */}
-
-      <main className="h-screen overflow-y-auto pt-[70px]">
-        <div className="mx-auto max-w-[1250px] p-5 md:p-8">
-          {/* ==================================================
-              PROFILE HERO
-          ================================================== */}
-
-          <section className="relative overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-sm">
-            {/* Background */}
-
-            <div className="absolute inset-x-0 top-0 h-[170px] bg-gradient-to-r from-[#073b88] via-[#0b58b8] to-[#1684ff]" />
-
+      <main className="w-full overflow-visible pt-[72px]">
+  <div className="mx-auto w-full max-w-[1320px] px-4 py-6 md:px-8 md:py-10">
+          <section className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_20px_55px_-35px_rgba(15,45,90,0.35)]">
+            <div className="absolute inset-x-0 top-0 h-[190px] bg-gradient-to-r from-[#092b5d] via-[#104782] to-[#1676d2]" />
             <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/10" />
-
             <div className="absolute right-[25%] top-20 h-40 w-40 rounded-full bg-white/5" />
 
-            {/* Hero content */}
-
-            <div className="relative px-6 pb-7 pt-24 md:px-9">
+            <div className="relative px-6 pb-8 pt-28 md:px-10">
               <div className="flex flex-col gap-6 md:flex-row md:items-end">
-                {/* Profile photo */}
-
                 <div className="relative mx-auto shrink-0 md:mx-0">
-                  <div className="relative h-36 w-36 overflow-hidden rounded-full border-[6px] border-white bg-gradient-to-br from-[#70b9f5] to-[#277bc9] shadow-xl">
+                  <div className="relative h-36 w-36 overflow-hidden rounded-full border-[6px] border-white bg-gradient-to-br from-[#70b9f5] to-[#277bc9] shadow-[0_14px_30px_-12px_rgba(9,43,93,0.45)]">
                     {profilePhoto ? (
                       <img
                         src={profilePhoto}
@@ -747,16 +512,10 @@ const ProfilePage = () => {
                       </div>
                     )}
 
-                    {/* ==================================================
-                        PEN OVERLAY
-                    ================================================== */}
-
                     {isOwnProfile && isEditing && (
                       <button
                         type="button"
-                        onClick={
-                          handleProfilePhotoClick
-                        }
+                        onClick={handleProfilePhotoClick}
                         className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/45 text-white opacity-100 transition hover:bg-black/55"
                         aria-label="Change profile photo"
                       >
@@ -767,57 +526,48 @@ const ProfilePage = () => {
                     )}
                   </div>
 
-                  {/* Hidden file input */}
-
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     className="hidden"
-                    onChange={
-                      handleProfilePhotoChange
-                    }
+                    onChange={handleProfilePhotoChange}
                   />
 
                   {isOwnProfile && isEditing && (
                     <div className="mt-3 text-center">
-                      <p className="text-[9px] font-medium text-gray-400">
+                      <p className="text-xs font-medium text-gray-400">
                         Click the ✏️ button to change photo
                       </p>
-
-                      <p className="mt-1 text-[8px] text-gray-400">
+                      <p className="mt-1 text-sm text-gray-400">
                         JPG, PNG or WebP · Max 3 MB
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* Profile information */}
-
-                <div className="min-w-0 flex-1 text-center md:pb-2 md:text-left">
+                <div className="min-w-0 flex-1 translate-y-6 text-center md:translate-y-8 md:text-left">
                   {isEditing && isOwnProfile ? (
                     <div className="max-w-[520px]">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                      <label className="text-xs font-bold uppercase tracking-[0.08em] text-gray-400">
                         Name
                       </label>
 
                       <input
                         value={name}
-                        onChange={(event) =>
-                          setName(event.target.value)
-                        }
+                        onChange={(event) => setName(event.target.value)}
                         maxLength={60}
-                        className="mt-1 h-12 w-full rounded-xl border border-blue-100 bg-white px-4 text-xl font-bold text-[#123d78] outline-none transition focus:border-[#1684ff] focus:ring-4 focus:ring-blue-50"
+                        className="mt-1 h-12 w-full rounded-xl border border-slate-200/80 bg-white px-4 text-xl font-bold text-[#123d78] outline-none transition focus:border-[#1684ff] focus:ring-4 focus:ring-blue-100/70"
                       />
                     </div>
                   ) : (
-                    <h1 className="text-3xl font-bold tracking-[-1px] text-[#123d78] md:text-[34px]">
+                    <h1 className="break-words text-3xl font-bold leading-tight text-[#092b5d] md:text-4xl">
                       {displayName}
                     </h1>
                   )}
 
                   {profile.email && (
-                    <p className="mt-2 text-[12px] text-gray-400">
+                    <p className="mt-2 text-sm text-gray-400">
                       {profile.email}
                     </p>
                   )}
@@ -827,28 +577,25 @@ const ProfilePage = () => {
                       skills.slice(0, 5).map((skill) => (
                         <span
                           key={skill}
-                          className="rounded-full bg-blue-50 px-3 py-1.5 text-[9px] font-bold text-[#1684ff]"
+                          className="rounded-full border border-blue-100 bg-blue-50/80 px-3.5 py-2 text-xs font-semibold text-[#1265c7]"
                         >
                           {skill}
                         </span>
                       ))
                     ) : (
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-xs text-gray-400">
                         No skills added yet
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Profile stats */}
-
                 <div className="flex shrink-0 justify-center gap-8 md:pb-3">
                   <div className="text-center">
                     <p className="text-xl font-bold text-[#123d78]">
                       {postedProjects.length}
                     </p>
-
-                    <p className="mt-1 text-[9px] font-medium text-gray-400">
+                    <p className="mt-1 text-xs font-medium text-gray-400">
                       Projects
                     </p>
                   </div>
@@ -857,8 +604,7 @@ const ProfilePage = () => {
                     <p className="text-xl font-bold text-[#123d78]">
                       {skills.length}
                     </p>
-
-                    <p className="mt-1 text-[9px] font-medium text-gray-400">
+                    <p className="mt-1 text-xs font-medium text-gray-400">
                       Skills
                     </p>
                   </div>
@@ -867,8 +613,7 @@ const ProfilePage = () => {
                     <p className="text-xl font-bold text-[#123d78]">
                       {portfolio.length}
                     </p>
-
-                    <p className="mt-1 text-[9px] font-medium text-gray-400">
+                    <p className="mt-1 text-xs font-medium text-gray-400">
                       Portfolio
                     </p>
                   </div>
@@ -876,762 +621,640 @@ const ProfilePage = () => {
               </div>
             </div>
           </section>
-
-          {/* ==================================================
-              EDIT PROFILE SECTION
-          ================================================== */}
-
-          {isOwnProfile && isEditing && (
-            <section className="mt-6 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#1684ff]">
-                  <Pencil size={19} />
-                </div>
-
-                <div>
-                  <h2 className="text-[17px] font-bold text-[#123d78]">
-                    Edit Profile
-                  </h2>
-
-                  <p className="mt-1 text-[10px] text-gray-400">
-                    Update your information and skills.
-                  </p>
-                </div>
-              </div>
-
-              {/* Bio */}
-
-              <div className="mt-7">
-                <label className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                  About You
-                </label>
-
-                <textarea
-                  value={bio}
-                  onChange={(event) =>
-                    setBio(event.target.value)
-                  }
-                  maxLength={500}
-                  rows={4}
-                  placeholder="Tell other students about yourself, your interests and what you like building..."
-                  className="mt-2 w-full resize-none rounded-xl border border-blue-100 bg-[#f9fcff] p-4 text-[12px] leading-5 text-[#315f96] outline-none transition focus:border-[#1684ff] focus:bg-white focus:ring-4 focus:ring-blue-50"
-                />
-
-                <div className="mt-1 flex justify-end">
-                  <span className="text-[8px] text-gray-400">
-                    {bio.length}/500
-                  </span>
-                </div>
-              </div>
-
-              {/* Skills */}
-
-              <div className="mt-6">
-                <label className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                  Skills
-                </label>
-
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                  <input
-                    value={skillInput}
-                    onChange={(event) =>
-                      setSkillInput(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        handleAddSkill();
-                      }
-                    }}
-                    placeholder="Add a skill e.g. React"
-                    className="h-11 flex-1 rounded-xl border border-blue-100 bg-[#f9fcff] px-4 text-[11px] text-[#315f96] outline-none transition focus:border-[#1684ff] focus:bg-white"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={handleAddSkill}
-                    className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1684ff] px-5 text-[11px] font-bold text-white transition hover:bg-[#0874e8]"
-                  >
-                    <Plus size={15} />
-                    Add Skill
-                  </button>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-[9px] font-semibold text-[#1684ff]"
-                    >
-                      {skill}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRemoveSkill(skill)
-                        }
-                        className="rounded-full text-blue-400 transition hover:text-red-500"
-                        aria-label={`Remove ${skill}`}
-                      >
-                        <X size={11} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* ==================================================
-                  PORTFOLIO MANAGEMENT
-              ================================================== */}
-
-              <div className="mt-8 border-t border-gray-100 pt-7">
-                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                  <div>
-                    <h3 className="text-[14px] font-bold text-[#123d78]">
-                      Portfolio Projects
-                    </h3>
-
-                    <p className="mt-1 text-[9px] text-gray-400">
-                      Add projects you want other students to see.
-                    </p>
+                    <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.85fr)]">
+            <div className="min-w-0 space-y-6">
+              {/* About */}
+              <section className="rounded-[24px] border border-slate-200/80 bg-white p-6 shadow-[0_12px_35px_-28px_rgba(15,45,90,0.35)] md:p-8">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#1684ff]">
+                    <User size={19} />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPortfolioForm(
-                        (current) => !current
-                      )
-                    }
-                    className="flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 px-4 text-[10px] font-bold text-[#1684ff] transition hover:bg-blue-50"
-                  >
-                    {showPortfolioForm ? (
-                      <>
-                        <X size={14} />
-                        Close
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={14} />
-                        Add Project
-                      </>
-                    )}
-                  </button>
+                  <div>
+                    <h2 className="text-lg font-bold text-[#123d78]">
+                      About me
+                    </h2>
+                    <p className="text-xs text-gray-400">
+                      A little introduction
+                    </p>
+                  </div>
                 </div>
 
-                {showPortfolioForm && (
-                  <div className="mt-5 rounded-2xl border border-blue-100 bg-[#f8fbff] p-5">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="text-[9px] font-bold text-gray-400">
-                          Project Title
-                        </label>
+                {isEditing && isOwnProfile ? (
+                  <textarea
+                    value={bio}
+                    onChange={(event) => setBio(event.target.value)}
+                    rows={5}
+                    maxLength={1000}
+                    placeholder="Tell other students about yourself, your interests, and what you enjoy building..."
+                    className="mt-6 w-full resize-y rounded-xl border border-slate-200 bg-[#fbfdff] p-4 text-sm leading-7 text-slate-700 outline-none transition placeholder:text-gray-400 focus:border-[#1684ff] focus:ring-4 focus:ring-blue-100/70"
+                  />
+                ) : (
+                  <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-slate-600">
+                    {profile.bio?.trim() ||
+                      "This student hasn't added an introduction yet."}
+                  </p>
+                )}
+              </section>
 
+              {/* Skills */}
+              <section className="rounded-[24px] border border-slate-200/80 bg-white p-6 shadow-[0_12px_35px_-28px_rgba(15,45,90,0.35)] md:p-8">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <Code2 size={19} />
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-bold text-[#123d78]">
+                        Skills & expertise
+                      </h2>
+                      <p className="text-xs text-gray-400">
+                        Technologies and skills
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                    {skills.length} {skills.length === 1 ? "skill" : "skills"}
+                  </span>
+                </div>
+
+                {isEditing && isOwnProfile && (
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                    <input
+                      value={skillInput}
+                      onChange={(event) => setSkillInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          handleAddSkill();
+                        }
+                      }}
+                      placeholder="e.g. React, TypeScript, UI/UX"
+                      className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-[#fbfdff] px-4 text-sm outline-none transition focus:border-[#1684ff] focus:ring-4 focus:ring-blue-100/70"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleAddSkill}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1265c7] px-5 text-sm font-semibold text-white transition hover:bg-[#0c53a8]"
+                    >
+                      <Plus size={16} />
+                      Add skill
+                    </button>
+                  </div>
+                )}
+
+                {skills.length > 0 ? (
+                  <div className="mt-6 flex flex-wrap gap-2.5">
+                    {skills.map((skill) => (
+                      <div
+                        key={skill}
+                        className="group inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-[#f7fbff] px-3.5 py-2.5 text-sm font-medium text-[#285b99] transition hover:border-blue-200 hover:shadow-sm"
+                      >
+                        <span>{skill}</span>
+
+                        {isEditing && isOwnProfile && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill)}
+                            className="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-100 hover:text-red-600"
+                            aria-label={`Remove ${skill}`}
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-8 text-center">
+                    <Code2
+                      size={25}
+                      className="mx-auto text-slate-300"
+                    />
+                    <p className="mt-3 text-sm font-semibold text-slate-500">
+                      No skills added yet
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">
+                      Add your skills to help other students discover your
+                      expertise.
+                    </p>
+                  </div>
+                )}
+              </section>
+
+              {/* Projects posted on CollabNest */}
+              <section className="rounded-[24px] border border-slate-200/80 bg-white p-6 shadow-[0_12px_35px_-28px_rgba(15,45,90,0.35)] md:p-8">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+                      <BriefcaseBusiness size={19} />
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-bold text-[#123d78]">
+                        Projects on CollabNest
+                      </h2>
+                      <p className="text-xs text-gray-400">
+                        Ideas and opportunities shared
+                      </p>
+                    </div>
+                  </div>
+
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/post-project")}
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-blue-50 px-3 text-xs font-semibold text-[#1265c7] transition hover:bg-blue-100"
+                    >
+                      <Plus size={14} />
+                      <span className="hidden sm:inline">Post project</span>
+                      <span className="sm:hidden">Post</span>
+                    </button>
+                  )}
+                </div>
+
+                {projectsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="h-7 w-7 animate-spin rounded-full border-[3px] border-blue-100 border-t-[#1684ff]" />
+                  </div>
+                ) : postedProjects.length > 0 ? (
+                  <div className="mt-6 space-y-4">
+                    {postedProjects.map((project) => (
+                      <article
+                        key={project._id}
+                        className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/70 p-5 transition hover:border-blue-200 hover:shadow-[0_12px_30px_-24px_rgba(18,101,199,0.45)]"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="break-words text-base font-bold text-[#123d78]">
+                              {project.title}
+                            </h3>
+
+                            {project.category && (
+                              <span className="mt-2 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600">
+                                {project.category}
+                              </span>
+                            )}
+                          </div>
+
+                          {isOwnProfile && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleEditPostedProject(project)
+                              }
+                              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                            >
+                              <Pencil size={13} />
+                              Edit project
+                            </button>
+                          )}
+                        </div>
+
+                        {project.description && (
+                          <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
+                            {project.description}
+                          </p>
+                        )}
+
+                        {project.skills?.length > 0 && (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {project.skills.map((skill) => (
+                              <span
+                                key={skill}
+                                className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
+                          <span className="text-xs text-slate-400">
+                            {project.createdAt
+                              ? `Posted ${new Date(
+                                  project.createdAt
+                                ).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}`
+                              : "Project"}
+                          </span>
+
+                          {project.teamSize && (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                              <User size={13} />
+                              Team size: {project.teamSize}
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-10 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+                      <BriefcaseBusiness size={22} />
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-slate-600">
+                      No projects posted yet
+                    </p>
+                    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-400">
+                      Share a project idea and find students who want to build
+                      something together.
+                    </p>
+
+                    {isOwnProfile && (
+                      <button
+                        type="button"
+                        onClick={() => navigate("/post-project")}
+                        className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-[#1265c7] px-4 text-sm font-semibold text-white transition hover:bg-[#0c53a8]"
+                      >
+                        <Plus size={15} />
+                        Create a project
+                      </button>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {/* Portfolio */}
+              <section className="rounded-[24px] border border-slate-200/80 bg-white p-6 shadow-[0_12px_35px_-28px_rgba(15,45,90,0.35)] md:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                      <Globe size={19} />
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-bold text-[#123d78]">
+                        Portfolio
+                      </h2>
+                      <p className="text-xs text-gray-400">
+                        Projects and work you're proud of
+                      </p>
+                    </div>
+                  </div>
+
+                  {isOwnProfile && isEditing && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowPortfolioForm((current) => !current)
+                      }
+                      className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-xl bg-violet-50 px-4 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 sm:self-auto"
+                    >
+                      {showPortfolioForm ? (
+                        <X size={15} />
+                      ) : (
+                        <Plus size={15} />
+                      )}
+                      {showPortfolioForm ? "Cancel" : "Add portfolio item"}
+                    </button>
+                  )}
+                </div>
+
+                {showPortfolioForm && isOwnProfile && isEditing && (
+                  <div className="mt-6 rounded-2xl border border-violet-100 bg-violet-50/40 p-5">
+                    <h3 className="text-sm font-bold text-[#123d78]">
+                      Add a portfolio project
+                    </h3>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+                          Project title *
+                        </label>
                         <input
                           value={newProject.title}
                           onChange={(event) =>
                             setNewProject({
                               ...newProject,
-                              title:
-                                event.target.value,
+                              title: event.target.value,
                             })
                           }
-                          placeholder="My project"
-                          className="mt-2 h-10 w-full rounded-lg border border-blue-100 bg-white px-3 text-[10px] outline-none focus:border-[#1684ff]"
+                          placeholder="e.g. EV Charging Locator"
+                          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100/70"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[9px] font-bold text-gray-400">
-                          Project Link
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+                          Description
                         </label>
+                        <textarea
+                          value={newProject.description}
+                          onChange={(event) =>
+                            setNewProject({
+                              ...newProject,
+                              description: event.target.value,
+                            })
+                          }
+                          rows={3}
+                          placeholder="What does this project do?"
+                          className="w-full resize-y rounded-xl border border-slate-200 bg-white p-3.5 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100/70"
+                        />
+                      </div>
 
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+                          Project URL
+                        </label>
                         <input
+                          type="url"
                           value={newProject.link}
                           onChange={(event) =>
                             setNewProject({
                               ...newProject,
-                              link:
-                                event.target.value,
+                              link: event.target.value,
                             })
                           }
-                          placeholder="https://github.com/..."
-                          className="mt-2 h-10 w-full rounded-lg border border-blue-100 bg-white px-3 text-[10px] outline-none focus:border-[#1684ff]"
+                          placeholder="https://github.com/your-project"
+                          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100/70"
                         />
                       </div>
-                    </div>
 
-                    <div className="mt-4">
-                      <label className="text-[9px] font-bold text-gray-400">
-                        Description
-                      </label>
-
-                      <textarea
-                        value={newProject.description}
-                        onChange={(event) =>
-                          setNewProject({
-                            ...newProject,
-                            description:
-                              event.target.value,
-                          })
-                        }
-                        rows={3}
-                        placeholder="Briefly describe your project..."
-                        className="mt-2 w-full resize-none rounded-lg border border-blue-100 bg-white p-3 text-[10px] outline-none focus:border-[#1684ff]"
-                      />
-                    </div>
-
-                    <div className="mt-4">
-                      <label className="text-[9px] font-bold text-gray-400">
-                        Project Image URL
-                      </label>
-
-                      <input
-                        value={newProject.image}
-                        onChange={(event) =>
-                          setNewProject({
-                            ...newProject,
-                            image:
-                              event.target.value,
-                          })
-                        }
-                        placeholder="https://..."
-                        className="mt-2 h-10 w-full rounded-lg border border-blue-100 bg-white px-3 text-[10px] outline-none focus:border-[#1684ff]"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={
-                        handleAddPortfolioProject
-                      }
-                      className="mt-4 flex h-10 items-center gap-2 rounded-lg bg-[#1684ff] px-5 text-[10px] font-bold text-white transition hover:bg-[#0874e8]"
-                    >
-                      <Plus size={14} />
-                      Add Portfolio Project
-                    </button>
-                  </div>
-                )}
-
-                {portfolio.length > 0 && (
-                  <div className="mt-5 space-y-3">
-                    {portfolio.map(
-                      (project, index) => (
-                        <div
-                          key={
-                            project._id ||
-                            `${project.title}-${index}`
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+                          Image URL (optional)
+                        </label>
+                        <input
+                          type="url"
+                          value={newProject.image}
+                          onChange={(event) =>
+                            setNewProject({
+                              ...newProject,
+                              image: event.target.value,
+                            })
                           }
-                          className="flex items-start gap-4 rounded-xl border border-blue-50 bg-[#f9fcff] p-4"
+                          placeholder="https://example.com/project-image.png"
+                          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100/70"
+                        />
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddPortfolioProject}
+                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-violet-600 px-5 text-sm font-semibold text-white transition hover:bg-violet-700"
                         >
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-blue-50">
-                            {project.image ? (
-                              <img
-                                src={project.image}
-                                alt={project.title}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <ImagePlus
-                                size={19}
-                                className="text-blue-300"
-                              />
-                            )}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-[11px] font-bold text-[#123d78]">
-                              {project.title}
-                            </h4>
-
-                            {project.description && (
-                              <p className="mt-1 line-clamp-2 text-[9px] leading-4 text-gray-400">
-                                {project.description}
-                              </p>
-                            )}
-
-                            {project.link && (
-                              <p className="mt-2 truncate text-[9px] text-[#1684ff]">
-                                {project.link}
-                              </p>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleRemovePortfolioProject(
-                                index
-                              )
-                            }
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
-                            aria-label="Remove portfolio project"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      )
-                    )}
+                          <Plus size={15} />
+                          Add to portfolio
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
-            </section>
-          )}
 
-          {/* ==================================================
-              PROFILE CONTENT GRID
-          ================================================== */}
-
-          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            {/* =================================================
-                LEFT COLUMN
-            ================================================= */}
-
-            <div className="space-y-6">
-              {/* ABOUT */}
-
-              {!isEditing && (
-                <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#1684ff]">
-                      <User size={19} />
-                    </div>
-
-                    <div>
-                      <h2 className="text-[17px] font-bold text-[#123d78]">
-                        About
-                      </h2>
-
-                      <p className="mt-1 text-[9px] text-gray-400">
-                        A little about this student
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="mt-5 whitespace-pre-line text-[12px] leading-6 text-gray-500">
-                    {profile.bio ||
-                      "This student hasn't added a bio yet."}
-                  </p>
-                </section>
-              )}
-
-              {/* SKILLS */}
-
-              {!isEditing && (
-                <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                      <Code2 size={19} />
-                    </div>
-
-                    <div>
-                      <h2 className="text-[17px] font-bold text-[#123d78]">
-                        Skills
-                      </h2>
-
-                      <p className="mt-1 text-[9px] text-gray-400">
-                        Technologies and areas of interest
-                      </p>
-                    </div>
-                  </div>
-
-                  {profile.skills.length > 0 ? (
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {profile.skills.map((skill) => (
-                        <span
-                          key={skill}
-                          className="rounded-full bg-blue-50 px-4 py-2 text-[10px] font-semibold text-[#1684ff]"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-5 text-[11px] text-gray-400">
-                      No skills added yet.
-                    </p>
-                  )}
-                </section>
-              )}
-
-              {/* =================================================
-                  POSTED PROJECTS
-              ================================================= */}
-
-              <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                      <BriefcaseBusiness size={19} />
-                    </div>
-
-                    <div>
-                      <h2 className="text-[17px] font-bold text-[#123d78]">
-                        Posted Projects
-                      </h2>
-
-                      <p className="mt-1 text-[9px] text-gray-400">
-                        Projects posted by {displayName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-[9px] font-bold text-[#1684ff]">
-                    {postedProjects.length}
-                  </span>
-                </div>
-
-                {projectsLoading ? (
-                  <div className="mt-7 flex items-center justify-center py-10">
-                    <div className="h-7 w-7 animate-spin rounded-full border-3 border-blue-100 border-t-[#1684ff]" />
-                  </div>
-                ) : postedProjects.length === 0 ? (
-                  <div className="mt-6 rounded-xl border border-dashed border-blue-100 bg-[#f9fcff] px-5 py-10 text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-400">
-                      <BriefcaseBusiness size={20} />
-                    </div>
-
-                    <p className="mt-4 text-[11px] font-semibold text-[#315f96]">
-                      No projects posted yet
-                    </p>
-
-                    {isOwnProfile && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigate("/post-project")
-                        }
-                        className="mt-4 rounded-lg bg-[#1684ff] px-4 py-2 text-[9px] font-bold text-white transition hover:bg-[#0874e8]"
+                {portfolio.length > 0 ? (
+                  <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {portfolio.map((item, index) => (
+                      <article
+                        key={item._id || `${item.title}-${index}`}
+                        className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg"
                       >
-                        Post Your First Project
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
-                    {postedProjects.map(
-                      (project) => (
-                        <div
-                          key={project._id}
-                          className="group rounded-2xl border border-blue-100 bg-[#f9fcff] p-5 transition duration-200 hover:-translate-y-1 hover:bg-white hover:shadow-md"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-[#1684ff]">
-                              <Code2 size={21} />
+                        {item.image ? (
+                          <div className="h-40 overflow-hidden bg-slate-100">
+                            <img
+                              src={item.image}
+                              alt={item.title}
+                              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-32 items-center justify-center bg-gradient-to-br from-[#edf5ff] via-[#f7faff] to-violet-50">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#1684ff] shadow-sm">
+                              <Code2 size={25} />
                             </div>
+                          </div>
+                        )}
 
-                            {isOwnProfile && (
+                        <div className="p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <h3 className="break-words text-base font-bold text-[#123d78]">
+                              {item.title}
+                            </h3>
+
+                            {isEditing && isOwnProfile && (
                               <button
                                 type="button"
                                 onClick={() =>
-                                  handleEditPostedProject(
-                                    project
-                                  )
+                                  handleRemovePortfolioProject(index)
                                 }
-                                className="rounded-lg border border-blue-100 px-2.5 py-1.5 text-[8px] font-bold text-[#1684ff] opacity-0 transition group-hover:opacity-100 hover:bg-blue-50"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                                aria-label={`Remove ${item.title}`}
                               >
-                                Edit
+                                <Trash2 size={15} />
                               </button>
                             )}
                           </div>
 
-                          <h3 className="mt-4 line-clamp-2 text-[13px] font-bold text-[#123d78]">
-                            {project.title}
-                          </h3>
+                          {item.description && (
+                            <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-500">
+                              {item.description}
+                            </p>
+                          )}
 
-                          <p className="mt-2 line-clamp-3 text-[10px] leading-5 text-gray-500">
-                            {project.description}
-                          </p>
-
-                          <div className="mt-4 flex flex-wrap gap-1.5">
-                            {project.skills
-                              ?.slice(0, 4)
-                              .map((skill) => (
-                                <span
-                                  key={skill}
-                                  className="rounded-full bg-white px-2.5 py-1 text-[8px] font-semibold text-[#4d8dca]"
-                                >
-                                  {skill}
-                                </span>
-                              ))}
-                          </div>
-
-                          <div className="mt-4 flex items-center justify-between border-t border-blue-100 pt-3">
-                            <span className="text-[8px] text-gray-400">
-                              {project.category ||
-                                "Project"}
-                            </span>
-
-                            <span className="text-[8px] font-semibold text-gray-400">
-                              Team:{" "}
-                              {project.teamSize ||
-                                "Flexible"}
-                            </span>
-                          </div>
+                          {item.link && (
+                            <a
+                              href={item.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#1265c7] transition hover:text-[#084a96]"
+                            >
+                              <Link2 size={15} />
+                              View project
+                              <ExternalLink size={13} />
+                            </a>
+                          )}
                         </div>
-                      )
-                    )}
+                      </article>
+                    ))}
                   </div>
-                )}
-              </section>
-
-              {/* =================================================
-                  PORTFOLIO
-              ================================================= */}
-
-              <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm md:p-7">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
-                    <Sparkles size={19} />
-                  </div>
-
-                  <div>
-                    <h2 className="text-[17px] font-bold text-[#123d78]">
-                      Portfolio
-                    </h2>
-
-                    <p className="mt-1 text-[9px] text-gray-400">
-                      Projects and work shared by {displayName}
-                    </p>
-                  </div>
-                </div>
-
-                {portfolio.length === 0 ? (
-                  <div className="mt-6 rounded-xl border border-dashed border-blue-100 bg-[#f9fcff] px-5 py-10 text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-50 text-purple-400">
-                      <ImagePlus size={20} />
+                ) : (
+                  <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 py-10 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+                      <Globe size={22} />
                     </div>
-
-                    <p className="mt-4 text-[11px] font-semibold text-[#315f96]">
-                      No portfolio projects yet
+                    <p className="mt-3 text-sm font-semibold text-slate-600">
+                      Nothing in the portfolio yet
+                    </p>
+                    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-400">
+                      Showcase your best work, add project links, and help
+                      potential collaborators see what you can do.
                     </p>
 
-                    {isOwnProfile && (
+                    {isOwnProfile && isEditing && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsEditing(true);
-                          setShowPortfolioForm(true);
-                        }}
-                        className="mt-4 rounded-lg bg-[#1684ff] px-4 py-2 text-[9px] font-bold text-white transition hover:bg-[#0874e8]"
+                        onClick={() => setShowPortfolioForm(true)}
+                        className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl border border-violet-200 bg-white px-4 text-sm font-semibold text-violet-700 transition hover:bg-violet-50"
                       >
-                        Add Portfolio Project
+                        <Plus size={15} />
+                        Add your first project
                       </button>
                     )}
                   </div>
-                ) : (
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
-                    {portfolio.map(
-                      (project, index) => (
-                        <div
-                          key={
-                            project._id ||
-                            `${project.title}-${index}`
-                          }
-                          className="overflow-hidden rounded-2xl border border-blue-100 bg-[#f9fcff] transition duration-200 hover:-translate-y-1 hover:bg-white hover:shadow-md"
-                        >
-                          <div className="h-40 overflow-hidden bg-blue-50">
-                            {project.image ? (
-                              <img
-                                src={project.image}
-                                alt={project.title}
-                                className="h-full w-full object-cover transition duration-300 hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex h-full items-center justify-center">
-                                <ImagePlus
-                                  size={30}
-                                  className="text-blue-200"
-                                />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="p-5">
-                            <h3 className="text-[13px] font-bold text-[#123d78]">
-                              {project.title}
-                            </h3>
-
-                            {project.description && (
-                              <p className="mt-2 line-clamp-3 text-[10px] leading-5 text-gray-500">
-                                {project.description}
-                              </p>
-                            )}
-
-                            {project.link && (
-                              <a
-                                href={project.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-4 flex items-center gap-2 text-[9px] font-bold text-[#1684ff] hover:underline"
-                              >
-                                <ExternalLink
-                                  size={13}
-                                />
-                                View Project
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
                 )}
               </section>
-            </div>
+                          </div>
 
-            {/* =================================================
-                RIGHT SIDEBAR
-            ================================================= */}
-
-            <aside className="space-y-6">
-              {/* PROFILE SUMMARY */}
-
-              <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#1684ff]">
-                    <CheckCircle2 size={19} />
+            {/* Right sidebar */}
+            <aside className="min-w-0 space-y-6">
+              {/* Profile summary */}
+              <section className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_12px_35px_-28px_rgba(15,45,90,0.35)]">
+                <div className="bg-gradient-to-r from-[#092b5d] to-[#1265c7] px-6 py-5">
+                  <div className="flex items-center gap-2 text-white">
+                    <Sparkles size={18} />
+                    <h2 className="text-base font-bold">Profile overview</h2>
                   </div>
-
-                  <div>
-                    <h2 className="text-[16px] font-bold text-[#123d78]">
-                      Profile Summary
-                    </h2>
-
-                    <p className="mt-1 text-[9px] text-gray-400">
-                      Your CollabNest presence
-                    </p>
-                  </div>
+                  <p className="mt-1 text-xs text-blue-100/80">
+                    Your collaboration snapshot
+                  </p>
                 </div>
 
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400">
-                      Projects
-                    </span>
-
-                    <span className="text-[11px] font-bold text-[#123d78]">
+                <div className="space-y-5 p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <BriefcaseBusiness size={18} />
+                      </div>
+                      <span className="text-sm text-slate-600">
+                        Projects posted
+                      </span>
+                    </div>
+                    <span className="text-lg font-bold text-[#123d78]">
                       {postedProjects.length}
                     </span>
                   </div>
 
-                  <div className="h-px bg-gray-100" />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400">
-                      Skills
-                    </span>
-
-                    <span className="text-[11px] font-bold text-[#123d78]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                        <Code2 size={18} />
+                      </div>
+                      <span className="text-sm text-slate-600">
+                        Skills listed
+                      </span>
+                    </div>
+                    <span className="text-lg font-bold text-[#123d78]">
                       {skills.length}
                     </span>
                   </div>
 
-                  <div className="h-px bg-gray-100" />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400">
-                      Portfolio
-                    </span>
-
-                    <span className="text-[11px] font-bold text-[#123d78]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                        <Globe size={18} />
+                      </div>
+                      <span className="text-sm text-slate-600">
+                        Portfolio items
+                      </span>
+                    </div>
+                    <span className="text-lg font-bold text-[#123d78]">
                       {portfolio.length}
                     </span>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                        <CheckCircle2 size={18} />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-[#123d78]">
+                          Keep your profile updated
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          Highlight your skills and projects to help other
+                          students find you for collaboration.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
 
-              {/* MEMBER SINCE */}
-
-              <section className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+              {/* Member since */}
+              <section className="rounded-[24px] border border-slate-200/80 bg-white p-6 shadow-[0_12px_35px_-28px_rgba(15,45,90,0.35)]">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                    <Globe size={18} />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+                    <User size={18} />
                   </div>
 
                   <div>
-                    <h2 className="text-[16px] font-bold text-[#123d78]">
-                      CollabNest Member
+                    <h2 className="text-base font-bold text-[#123d78]">
+                      Community member
                     </h2>
-
-                    <p className="mt-1 text-[9px] text-gray-400">
-                      Student community
+                    <p className="mt-1 text-xs text-slate-400">
+                      Part of CollabNest
                     </p>
                   </div>
                 </div>
 
-                <p className="mt-5 text-[10px] leading-5 text-gray-500">
-                  {profile.createdAt
-                    ? `Joined ${new Date(
-                        profile.createdAt
-                      ).toLocaleDateString(
-                        "en-IN",
-                        {
-                          month: "long",
-                          year: "numeric",
-                        }
-                      )}`
-                    : "Member of the CollabNest community"}
-                </p>
+                <div className="mt-5 rounded-xl bg-slate-50 px-4 py-3.5">
+                  <p className="text-xs font-medium text-slate-400">
+                    Member since
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-700">
+                    {profile.createdAt
+                      ? new Date(profile.createdAt).toLocaleDateString(
+                          "en-IN",
+                          {
+                            month: "long",
+                            year: "numeric",
+                          }
+                        )
+                      : "CollabNest community"}
+                  </p>
+                </div>
               </section>
 
-              {/* COLLABORATION CTA */}
+              {/* Collaboration message */}
+              <section className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#092b5d] via-[#104782] to-[#1676d2] p-6 text-white shadow-[0_18px_40px_-25px_rgba(9,43,93,0.7)]">
+                <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/[0.07]" />
+                <div className="absolute -bottom-12 -left-10 h-32 w-32 rounded-full bg-white/[0.06]" />
 
-              {!isOwnProfile && (
-                <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#073b88] to-[#1684ff] p-6 text-white shadow-lg">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-                    <Link2 size={19} />
+                <div className="relative">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10">
+                    <Sparkles size={21} />
                   </div>
 
-                  <h2 className="mt-5 text-[17px] font-bold">
-                    Interested in collaborating?
+                  <h2 className="mt-5 text-lg font-bold">
+                    Great things happen together.
                   </h2>
 
-                  <p className="mt-2 text-[10px] leading-5 text-blue-100">
-                    Connect with {displayName} and
-                    start building something together.
+                  <p className="mt-2 text-sm leading-6 text-blue-100/90">
+                    Share ideas, learn from other students, and build
+                    meaningful projects as a team.
                   </p>
 
-                  <button
-                    type="button"
-                    className="mt-5 flex h-10 w-full items-center justify-center rounded-xl bg-white text-[10px] font-bold text-[#0878e8] transition hover:bg-blue-50"
-                  >
-                    Connect & Collaborate
-                  </button>
-                </section>
-              )}
-
-              {/* EDIT PROFILE CTA */}
-
-              {isOwnProfile && !isEditing && (
-                <section className="rounded-2xl border border-blue-100 bg-gradient-to-br from-[#eef7ff] to-[#dceeff] p-6">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#1684ff] shadow-sm">
-                    <Sparkles size={19} />
-                  </div>
-
-                  <h2 className="mt-4 text-[16px] font-bold text-[#123d78]">
-                    Keep your profile updated
-                  </h2>
-
-                  <p className="mt-2 text-[10px] leading-5 text-gray-500">
-                    Add your skills, bio and portfolio so
-                    other students know what you can build.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setIsEditing(true)
-                    }
-                    className="mt-5 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#1684ff] text-[10px] font-bold text-white transition hover:bg-[#0874e8]"
-                  >
-                    <Pencil size={14} />
-                    Edit Profile
-                  </button>
-                </section>
-              )}
+                  {isOwnProfile && (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/post-project")}
+                      className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-[#104782] transition hover:bg-blue-50"
+                    >
+                      <Plus size={15} />
+                      Start a project
+                    </button>
+                  )}
+                </div>
+              </section>
             </aside>
           </div>
+
+          <footer className="mt-10 border-t border-slate-200/80 py-6 text-center">
+            <p className="text-xs text-slate-400">
+              © {new Date().getFullYear()} CollabNest · Better together.
+            </p>
+          </footer>
         </div>
       </main>
     </div>
