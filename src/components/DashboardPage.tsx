@@ -270,6 +270,8 @@ const DashboardPage = () => {
   );
   const [selectedProject, setSelectedProject] =
     useState<Project | null>(null);
+const [sendingRequest, setSendingRequest] = useState(false);
+const [requestMessage, setRequestMessage] = useState("");
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -495,6 +497,66 @@ const DashboardPage = () => {
     setSelectedProject(project);
   };
 
+  
+  const handleConnect = async () => {
+    if (!selectedProject || sendingRequest) return;
+
+    if (!API_URL) {
+      setRequestMessage("Server URL is not configured.");
+      return;
+    }
+
+    if (
+      String(selectedProject.createdBy?._id || "") ===
+      String(currentUserId)
+    ) {
+      setRequestMessage("You cannot request to join your own project.");
+      return;
+    }
+
+    setSendingRequest(true);
+    setRequestMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/collaborations/projects/${selectedProject._id}/request`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+          data.error ||
+          `Request failed (${response.status}).`
+        );
+      }
+
+      setRequestMessage(
+        data.message || "Collaboration request sent successfully!"
+      );
+    } catch (error) {
+      console.error("Send collaboration request error:", error);
+
+      setRequestMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to send your request. Please try again."
+      );
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+
+  
   return (
     <div className="min-h-screen bg-[#f5f9ff] text-[#12355b]">
 
@@ -1612,32 +1674,47 @@ const DashboardPage = () => {
                   Close
                 </button>
 
-                <button
-                  type="button"
-                  className="
-                    flex
-                    h-[42px]
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    bg-gradient-to-r
-                    from-[#1684ff]
-                    to-[#0759bd]
-                    px-5
-                    text-[11px]
-                    font-semibold
-                    text-white
-                    shadow-lg
-                    shadow-blue-500/20
-                    transition
-                    hover:-translate-y-[1px]
-                    hover:shadow-xl
-                  "
-                >
-                  <MessageCircle size={15} />
-                  Connect / Collaborate
-                </button>
+                
+  <button
+    type="button"
+    onClick={handleConnect}
+    disabled={sendingRequest}
+    className="
+      flex
+      h-[42px]
+      items-center
+      justify-center
+      gap-2
+      rounded-xl
+      bg-gradient-to-r
+      from-[#1684ff]
+      to-[#0759bd]
+      px-5
+      text-[11px]
+      font-semibold
+      text-white
+      shadow-lg
+      shadow-blue-500/20
+      transition
+      hover:-translate-y-[1px]
+      hover:shadow-xl
+      disabled:cursor-not-allowed
+      disabled:opacity-60
+    "
+  >
+    <MessageCircle size={15} />
+    {sendingRequest ? "Sending..." : "Connect / Collaborate"}
+  </button>
+
+  {requestMessage && (
+    <p
+      role="status"
+      className="mt-3 text-right text-[11px] font-medium text-blue-700"
+    >
+      {requestMessage}
+    </p>
+  )}
+
               </div>
             </div>
           </div>
