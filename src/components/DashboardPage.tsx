@@ -17,6 +17,7 @@ import {
   Zap,
   Star,
   X,
+  Menu,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -270,8 +271,9 @@ const DashboardPage = () => {
   );
   const [selectedProject, setSelectedProject] =
     useState<Project | null>(null);
-const [sendingRequest, setSendingRequest] = useState(false);
-const [requestMessage, setRequestMessage] = useState("");
+  const [sendingRequest, setSendingRequest] = useState(false);
+  const [requestMessage, setRequestMessage] = useState("");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -569,7 +571,16 @@ const [requestMessage, setRequestMessage] = useState("");
 
           {/* Logo */}
 
-          <div className="flex w-[240px] shrink-0 items-center gap-3 px-7">
+          <div className="flex w-auto shrink-0 items-center gap-2 px-3 md:w-[240px] md:gap-3 md:px-7">
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen((open) => !open)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white transition hover:bg-white/10 md:hidden"
+              aria-label={mobileSidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={mobileSidebarOpen}
+            >
+              {mobileSidebarOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1684ff] shadow-lg">
               <Users
                 size={23}
@@ -587,7 +598,7 @@ const [requestMessage, setRequestMessage] = useState("");
 
           {/* Search */}
 
-          <div className="flex flex-1 items-center justify-center px-5">
+          <div className="hidden flex-1 items-center justify-center px-5 md:flex">
             <div className="flex h-[44px] w-full max-w-[580px] items-center gap-3 rounded-full bg-white/10 px-5 backdrop-blur-md">
               <Search
                 size={19}
@@ -611,7 +622,7 @@ const [requestMessage, setRequestMessage] = useState("");
 
           {/* Right side */}
 
-          <div className="flex items-center gap-4 px-6">
+          <div className="flex items-center gap-2 px-3 md:gap-4 md:px-6">
 
             <button
               type="button"
@@ -654,23 +665,37 @@ const [requestMessage, setRequestMessage] = useState("");
           SIDEBAR
       ===================================================== */}
 
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-x-0 bottom-0 top-[70px] z-30 bg-black/40 md:hidden"
+        />
+      )}
+
       <aside
-        className="
+        className={`
           fixed
           bottom-0
           left-0
           top-[70px]
           z-40
-          hidden
-          w-[240px]
+          flex
+          w-[260px]
           flex-col
           overflow-y-auto
           bg-gradient-to-b
           from-[#073b88]
           to-[#062f70]
           text-white
-          md:flex
-        "
+          shadow-2xl
+          transition-transform
+          duration-300
+          md:w-[240px]
+          md:translate-x-0
+          ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
       >
         <nav className="flex-1 px-3 py-5">
 
@@ -678,9 +703,10 @@ const [requestMessage, setRequestMessage] = useState("");
             icon={<Home size={20} />}
             label="Dashboard"
             active
-            onClick={() =>
-              navigate("/dashboard")
-            }
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/dashboard");
+            }}
           />
 
           <SidebarItem
@@ -690,23 +716,28 @@ const [requestMessage, setRequestMessage] = useState("");
               />
             }
             label="Find Projects"
-            onClick={() =>
-              navigate("/explore-projects")
-            }
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/explore-projects");
+            }}
           />
 
           <SidebarItem
             icon={<Plus size={21} />}
             label="Post a Project"
-            onClick={() =>
-              navigate("/post-project")
-            }
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/post-project");
+            }}
           />
 
           <SidebarItem
             icon={<Users size={20} />}
             label="My Collaborations"
-            onClick={() => navigate("/collaboration-requests")}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/collaboration-requests");
+            }}
           />
 
           <SidebarItem
@@ -715,27 +746,39 @@ const [requestMessage, setRequestMessage] = useState("");
             }
             label="Messages"
             badge="2"
-            onClick={() => navigate("/messages")}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/messages");
+            }}
           />
 
           <SidebarItem
             icon={<Phone size={20} />}
             label="Calls"
             // Calls and call history are part of the Messages page.
-            onClick={() => navigate("/messages")}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/messages");
+            }}
           />
 
           <SidebarItem
             icon={<Mic size={20} />}
             label="Interview"
-            onClick={() => navigate("/interview")}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/interview");
+            }}
           />
 
           <SidebarItem
             icon={<Settings size={20} />}
             label="Settings"
             // Profile editing is currently handled on the Profile page.
-            onClick={() => navigate("/profile")}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/profile");
+            }}
           />
 
           {/* Logout */}
@@ -743,7 +786,10 @@ const [requestMessage, setRequestMessage] = useState("");
           <SidebarItem
             icon={<LogOut size={20} />}
             label="Logout"
-            onClick={() => void handleLogout()}
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              void handleLogout();
+            }}
           />
 
         </nav>
@@ -1137,7 +1183,10 @@ const [requestMessage, setRequestMessage] = useState("");
 
                 <button
                   type="button"
-                   onClick={() => navigate("/profile")}
+                   onClick={() => {
+              setMobileSidebarOpen(false);
+              navigate("/profile");
+            }}
                   className="mt-5 flex h-[45px] w-full items-center justify-center gap-2 rounded-xl bg-[#1684ff] text-[12px] font-bold text-white transition hover:bg-[#0874e8]"
                 >
                   Complete Profile
